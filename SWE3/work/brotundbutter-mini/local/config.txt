@@ -1,0 +1,5 @@
+user=mohalzubaidy
+webapp=docker-mohalzubaidy-java
+manager=docker-mohalzubaidy-manager
+dbpassword=sRby356wj3BXDiq9Y4S2
+baseurl=https://informatik.hs-bremerhaven.de

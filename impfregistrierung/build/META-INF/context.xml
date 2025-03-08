@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context>
+  <Resource name="jdbc/mariadb"
+            auth="Container"
+            type="javax.sql.DataSource"
+            factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
+            maxActive="20"
+            initialSize="10"
+            removeAbandoned="true"
+            username="impfadmin"
+            password="impfpass"
+            driverClassName="org.mariadb.jdbc.Driver"
+            url="jdbc:mariadb://localhost:3306/impfregistrierung" />
+</Context>
