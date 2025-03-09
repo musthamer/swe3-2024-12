@@ -1,0 +1,28 @@
+#!/bin/bash
+echo "🔍 Codeprüfung und Formatierung..."
+
+
+CHANGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.java$' || true)
+
+if [ -z "$CHANGED_FILES" ]; then
+    echo "✅ Keine Java-Dateien zum Prüfen – Commit wird akzeptiert."
+    exit 0
+fi
+
+
+
+# Prüfe Code-Formatierung
+if ! google-java-format -i $CHANGED_FILES; then
+    echo "❌ Fehler bei der Code-Formatierung!"
+    exit 1
+fi
+
+# Prüfe Code-Qualität
+if ! checkstyle -c /google_checks.xml $CHANGED_FILES; then
+    echo "❌ Fehler bei der Code-Qualität!"
+    exit 1
+fi
+
+echo "✅ Codeprüfung erfolgreich!"
+exit 0
+
