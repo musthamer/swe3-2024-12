@@ -2,11 +2,11 @@
 COMMIT_MSG=$(cat "$1")
 
 # Prüft auf korrektes Commit-Format
-if ! echo "$COMMIT_MSG" | grep -Eq "^(AUFGABE|FEATURE|BUGFIX|REFACTOR): .+"; then
-    echo "❌ Ungültiges Commit-Format! Bitte verwenden: 'AUFGABE|FEATURE|BUGFIX|REFACTOR: Beschreibung'"
+if ! echo "$COMMIT_MSG" | grep -Eq "^(AUFGABE|NEUE FUNKTION|FEHLERBEHEBUNG|CODE-VERBESSERUNG): .+"; then
+    echo " Ungültiges Commit-Format! Bitte verwenden: 'AUFGABE|NEUE FUNKTION|FEHLERBEHEBUNG|CODE-VERBESSERUNG: Beschreibung'"
     exit 1
 fi
 
-echo "✅ Commit-Format korrekt."
+echo "Commit-Format korrekt."
 exit 0
 

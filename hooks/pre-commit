@@ -18,8 +18,8 @@ if ! google-java-format -i $CHANGED_FILES; then
 fi
 
 # Prüfe Code-Qualität
-if ! checkstyle -c /google_checks.xml $CHANGED_FILES; then
-    echo "❌ Fehler bei der Code-Qualität!"
+if ! checkstyle -c mycheckstyle/misc/checkstyle.xml $CHANGED_FILES ; then
+    echo " Fehler bei der Code-Qualität!"
     exit 1
 fi
 

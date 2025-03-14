@@ -25,10 +25,10 @@
 </module>
 
         <!-- Fehlende 'break'-Anweisung in switch/case-Strukturen erkennen -->
-  <!--       <module name="MissingSwitchDefault"/>          -->
+  <!--       <module name="MissingSwitchDefault"/>        -->
 
         <!-- Prüfung auf leere Catch-Blöcke (fehlerhafte Fehlerbehandlung) -->
-  <!--   <module name="EmptyCatchBlock"/>   --!>
+  <!--   <module name="EmptyCatchBlock"/>   -->
 
         <!-- Überprüfung auf doppelte Variablenbelegung -->
         <module name="RedundantImport"/>
