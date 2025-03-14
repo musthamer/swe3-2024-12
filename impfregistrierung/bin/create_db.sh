@@ -1,14 +1,13 @@
 #!/bin/bash
 set -e
 
-DB_USER="impfadmin"
-DB_PASS="impfpass"
-DB_NAME="impfregistrierung"
+DB_USER="mohalzubaidy"
+DB_PASS="sRby356wj3BXDiq9Y4S2"
+DB_NAME="mohalzubaidy"
 
 echo "Starte Erstellung/Aktualisierung der MariaDB-Datenbank..."
 
-sudo mysql <<EOF
-USE mysql;
+mariadb -u $DB_USER -p$DB_PASS <<EOF
 DROP DATABASE IF EXISTS $DB_NAME;
 CREATE DATABASE $DB_NAME;
 USE $DB_NAME;
@@ -63,7 +62,6 @@ INSERT INTO appointment (date_slot, time_slot, vaccine, capacity, remaining_capa
 ('2025-04-01', '09:15-09:30', 'Biontech', 3, 3, 'Zentrum A', 'Provider A'),
 ('2025-04-01', '09:00-09:15', 'Moderna', 2, 2, 'Zentrum B', 'Provider B');
 
-FLUSH PRIVILEGES;
 EOF
 
 echo "Datenbank erfolgreich eingerichtet."

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8' >
+    <title>Mini Java Web Application</title>
+    <script>
+      const url = window.location.href;
+      connectionString=window.location.href.replace(/^http/,"ws")+"websocket"
+      const socket = new WebSocket(connectionString);
+
+      socket.onopen = function(event) {
+        socket.send("Moin from Websocket");
+      }
+
+      let counter = 0
+      socket.onmessage = function(event) {
+        document.querySelector("#log").innerText=event.data
+        setTimeout(()=>socket.send("Moin "+(++counter)),100)
+      }
+
+    </script>
+  </head>
+  <body>
+    <h1>Simple HTML-Page</h1>
+
+    <p>This is just a plain html-page at
+    the top of the war-folder.</p>
+
+    <h1>Servlets</h1>
+    <div id='log'></div>
+    <p>
+    <ul>
+      <li><a href='hello'>hello</a></li>
+      <li><a href='login?user=paul'>login</a></li>
+      <li><a href='protected'>protected</a></li>
+      <li><a href='logout'>logout</a></li>
+      <li><a href='sql'>sql</a></li>
+      <li><a href='redis'>redis</a></li>
+      <li><a href='createimage'>createimage</a></li>
+    </ul>
+    </p>
+
+  </body>
+</html>

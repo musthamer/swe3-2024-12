@@ -1,0 +1,10 @@
+user=mohalzubaidy
+webapp=docker-mohalzubaidy-java
+manager=docker-mohalzubaidy-manager
+dbserver=mysql-server
+dbuser=mohalzubaidy
+dbname=
+dbpassword=sRby356wj3BXDiq9Y4S2
+redisserver=localhost
+redispassword=sRby356wj3BXDiq9Y4S2
+baseurl=https://informatik.hs-bremerhaven.de

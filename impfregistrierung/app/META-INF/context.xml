@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Context>
-  <Resource name="jdbc/mariadb"
-            auth="Container"
-            type="javax.sql.DataSource"
-            factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
-            maxActive="20"
-            initialSize="10"
-            removeAbandoned="true"
-            username="impfadmin"
-            password="impfpass"
-            driverClassName="org.mariadb.jdbc.Driver"
-            url="jdbc:mariadb://localhost:3306/impfregistrierung" />
+    <Resource name="jdbc/mariadb"
+              auth="Container"
+              type="javax.sql.DataSource"
+              factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
+              maxActive="20"
+              initialSize="10"
+              removeAbandoned="true"
+              username="mohalzubaidy"
+              password="sRby356wj3BXDiq9Y4S2"
+              driverClassName="org.mariadb.jdbc.Driver"
+              url="jdbc:mariadb://mysql-server:3306/mohalzubaidy_db" />
 </Context>
+
