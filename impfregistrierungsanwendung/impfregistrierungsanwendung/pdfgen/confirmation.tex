@@ -1,0 +1,38 @@
+\documentclass[parskip=half]{scrartcl}
+\usepackage[ngerman]{babel}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\newcommand{\firstname}{NIX}
+\newcommand{\lastname}{NIX}
+\newcommand{\birthdate}{NIX}
+\newcommand{\street}{NIX}
+\newcommand{\city}{NIX}
+\newcommand{\postalcode}{NIX}
+\newcommand{\starttime}{NIX}
+\newcommand{\vaccine}{NIX}
+\newcommand{\vaccinationcenter}{NIX}
+\title{Impftermin-Bestätigung}
+\begin{document}
+  \input{datafile}
+\maketitle
+\thispagestyle{empty}
+\begin{center}
+\includegraphics[width=0.5\linewidth]{qrcode.png}
+\end{center}
+\begin{center}
+  \begin{tabular}{lc}
+  Impfzentrum: & \vaccinationcenter \\
+  Termin: & \starttime \\
+  Impfstoff: & \vaccine \\
+  Vorname: & \firstname \\
+  Nachname: & \lastname \\
+  Geburtsdatum: & \birthdate \\
+  Straße: & \street \\
+  Stadt: & \city \\
+  Postleitzahl: & \postalcode \\
+  \end{tabular}
+\end{center}
+\begin{center}
+\textbf{Bitte bringen Sie dieses Dokument zum vereinbarten Termin mit.}
+\end{center}
+\end{document}
