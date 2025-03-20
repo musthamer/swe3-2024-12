@@ -4,8 +4,12 @@ import hbv.model.Booking;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import hbv.service.RedisConfig;
+import hbv.service.BookingDocumentBuilder;
+import redis.clients.jedis.Jedis;
 
 public class BookingServiceImpl implements BookingService {
+
     @Override
     public int bookAppointment(int userId, int appointmentId, String bookingName) throws Exception {
         try (Connection conn = Database.getConnection()) {
@@ -43,6 +47,36 @@ public class BookingServiceImpl implements BookingService {
             psUpdate.executeUpdate();
             psUpdate.close();
 
+            // 🔹 Neue Logik zur Speicherung in Redis
+            if (bookingId != -1) {
+                String email = Database.getEmailByUserId(userId);  // E-Mail aus der Datenbank holen
+
+                // QR-Code und PDF generieren und in Redis speichern
+                new BookingDocumentBuilder()
+                        .setBookingId(String.valueOf(bookingId))
+                        .setEmail(email)
+                        .generateQRCode()
+                        .generatePdf()
+                        .build();
+
+                // 🔹 PDF und QR-Code aus Redis abrufen und E-Mail versenden
+                try (Jedis jedis = RedisConfig.getConnection()) {
+			byte[] pdfData = jedis.get(("pdf:" + bookingId).getBytes());
+                    byte[] qrData = jedis.get(("qr:" + bookingId).getBytes());
+
+                    if (pdfData == null || qrData == null) {
+                        throw new Exception("PDF oder QR-Code nicht in Redis gefunden.");
+                    }
+
+                    // E-Mail-Service aufrufen und Anhänge senden
+                    EmailService.getInstance().generateBookingEmailWithAttachments(
+                        email,       // Empfänger
+                        pdfData,     // PDF-Datei aus Redis
+                        qrData,      // QR-Code aus Redis
+                        String.valueOf(bookingId)
+                    );
+                }
+            }
             return bookingId;
         }
     }
@@ -96,3 +130,4 @@ public class BookingServiceImpl implements BookingService {
         return bookings;
     }
 }
+

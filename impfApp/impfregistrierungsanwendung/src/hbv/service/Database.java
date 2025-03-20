@@ -1,8 +1,6 @@
 package hbv.service;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.sql.*;
 
 public class Database {
     private static final String URL = "jdbc:mariadb://localhost:3306/" + System.getProperty("dbName", "impfregistrierung");
@@ -20,4 +18,20 @@ public class Database {
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
+
+    //  NEUE METHODE: E-Mail-Adresse aus der Datenbank abrufen
+    public static String getEmailByUserId(int userId) throws SQLException {
+        String email = null;
+        String sql = "SELECT email FROM user_account WHERE user_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                email = rs.getString("email");
+            }
+        }
+        return email;
+    }
 }
+

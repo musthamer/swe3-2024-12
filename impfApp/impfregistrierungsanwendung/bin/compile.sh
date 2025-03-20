@@ -2,7 +2,7 @@
 set -e
 source "$(dirname "$0")/config.sh"
 echo "Kompiliere Java-Quellcode..."
-javac -d "$CLASSES_DIR" -cp "$BASE_DIR/app/WEB-INF/lib/*" $(find "$SRC_DIR" -name "*.java")
+javac --release 21 --enable-preview -d "$CLASSES_DIR" -cp "$BASE_DIR/app/WEB-INF/lib/*" $(find "$SRC_DIR" -name "*.java")
 echo "Kompilierung abgeschlossen."
 echo "Erstelle WAR-Paket..."
 mkdir -p "$BUILD_DIR/war/WEB-INF/classes"
