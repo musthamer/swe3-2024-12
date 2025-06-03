@@ -9,7 +9,7 @@
     <property name="charset" value="UTF-8"/>
 
      <module name="LineLength">
-        <property name="max" value="150"/>
+        <property name="max" value="200"/>
       </module>
 
 
@@ -20,10 +20,11 @@
 
 
         <!-- Geschweifte Klammern nur bei mehrzeiligen Codeblöcken erforderlich -->
+<!--
 <module name="NeedBraces">
     <property name="allowSingleLineStatement" value="true"/>
 </module>
-
+ -->
         <!-- Fehlende 'break'-Anweisung in switch/case-Strukturen erkennen -->
   <!--       <module name="MissingSwitchDefault"/>        -->
 

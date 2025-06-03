@@ -1,0 +1,10 @@
+user=musthamer
+webapp=docker-musthamer-java
+manager=docker-musthamer-manager
+dbserver=mysql-server
+dbuser=musthamer
+dbname=musthamer_db
+dbpassword=JxhYgw8uc8ftIV2H87mM
+redisserver=localhost
+redispassword=JxhYgw8uc8ftIV2H87mM
+baseurl=https://informatik.hs-bremerhaven.de

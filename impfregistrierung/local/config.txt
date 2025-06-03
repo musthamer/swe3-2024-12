@@ -1,9 +1,0 @@
-webapp=app
-manager=manager
-dbserver=mariadb
-dbuser=dbuser
-dbname=dbdemo
-dbpassword=complexpassword
-redisserver=redis
-redispassword=foobared
-baseurl=http://localhost:8080
