@@ -1,0 +1,10 @@
+user=lskupzig
+webapp=docker-lskupzig-java
+manager=docker-lskupzig-manager
+dbserver=mysql-server
+dbuser=lskupzig
+dbname=lskupzig_db
+dbpassword=2cL1aCGBrhdlERwLHoPe
+redisserver=localhost
+redispassword=2cL1aCGBrhdlERwLHoPe
+baseurl=https://informatik.hs-bremerhaven.de
