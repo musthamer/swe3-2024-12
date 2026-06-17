@@ -3,13 +3,13 @@ package hbv.web;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.*;
-import java.sql.*;
-import javax.sql.*;
-import javax.naming.*;
 import java.security.SecureRandom;
+import java.sql.*;
 import java.util.*;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import javax.naming.*;
+import javax.sql.*;
 import redis.clients.jedis.Jedis;
 
 public class ResetPasswordServlet extends HttpServlet {
@@ -18,19 +18,19 @@ public class ResetPasswordServlet extends HttpServlet {
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws IOException, ServletException {
     String resetCode = request.getParameter("code");
-    
+
     if (resetCode == null || resetCode.isEmpty()) {
       response.sendRedirect("login");
       return;
     }
-    
+
     response.setContentType("text/html");
     PrintWriter out = response.getWriter();
-    
+
     // Prüfen, ob der Reset-Code gültig ist
     Jedis jedis = JedisAdapter.getJedis();
     String key = "reset:" + resetCode;
-    
+
     if (!jedis.exists(key)) {
       out.println("<!DOCTYPE html><html><body>");
       out.println("<h2>Ungültiger oder abgelaufener Link</h2>");
@@ -40,10 +40,10 @@ public class ResetPasswordServlet extends HttpServlet {
       JedisAdapter.releaseJedis(jedis);
       return;
     }
-    
+
     String email = jedis.hget(key, "email");
     JedisAdapter.releaseJedis(jedis);
-    
+
     // Formular zum Eingeben des neuen Passworts anzeigen
     out.println("<!DOCTYPE html>");
     out.println("<html><head><title>Neues Passwort festlegen</title></head><body>");
@@ -52,7 +52,8 @@ public class ResetPasswordServlet extends HttpServlet {
     out.println("<form method='POST'>");
     out.println("<input type='hidden' name='resetCode' value='" + resetCode + "' />");
     out.println("Neues Passwort: <input type='password' name='password' required /><br/>");
-    out.println("Passwort wiederholen: <input type='password' name='passwordConfirm' required /><br/>");
+    out.println(
+        "Passwort wiederholen: <input type='password' name='passwordConfirm' required /><br/>");
     out.println("<input type='submit' value='Passwort ändern'/>");
     out.println("</form>");
     out.println("</body></html>");
@@ -68,9 +69,13 @@ public class ResetPasswordServlet extends HttpServlet {
     String resetCode = request.getParameter("resetCode");
     String password = request.getParameter("password");
     String passwordConfirm = request.getParameter("passwordConfirm");
-    
-    if (resetCode == null || password == null || passwordConfirm == null || 
-        resetCode.isEmpty() || password.isEmpty() || passwordConfirm.isEmpty()) {
+
+    if (resetCode == null
+        || password == null
+        || passwordConfirm == null
+        || resetCode.isEmpty()
+        || password.isEmpty()
+        || passwordConfirm.isEmpty()) {
       out.println("<!DOCTYPE html><html><body>");
       out.println("<h2>Fehler</h2>");
       out.println("<p>Bitte füllen Sie alle Felder aus.</p>");
@@ -78,7 +83,7 @@ public class ResetPasswordServlet extends HttpServlet {
       out.println("</body></html>");
       return;
     }
-    
+
     if (!password.equals(passwordConfirm)) {
       out.println("<!DOCTYPE html><html><body>");
       out.println("<h2>Fehler</h2>");
@@ -87,48 +92,50 @@ public class ResetPasswordServlet extends HttpServlet {
       out.println("</body></html>");
       return;
     }
-    
+
     try {
       // Prüfen, ob der Reset-Code gültig ist
       Jedis jedis = JedisAdapter.getJedis();
       String key = "reset:" + resetCode;
-      
+
       if (!jedis.exists(key)) {
         out.println("<!DOCTYPE html><html><body>");
         out.println("<h2>Ungültiger oder abgelaufener Link</h2>");
-        out.println("<p>Der Link zum Zurücksetzen Ihres Passworts ist ungültig oder abgelaufen.</p>");
+        out.println(
+            "<p>Der Link zum Zurücksetzen Ihres Passworts ist ungültig oder abgelaufen.</p>");
         out.println("<p><a href='forgot-password'>Neuen Link anfordern</a></p>");
         out.println("</body></html>");
         JedisAdapter.releaseJedis(jedis);
         return;
       }
-      
+
       String accountId = jedis.hget(key, "account_id");
-      
+
       // Reset-Code aus Redis löschen (Einmalverwendung)
       jedis.del(key);
       JedisAdapter.releaseJedis(jedis);
-      
+
       // Passwort in der Datenbank aktualisieren
       Context initCtx = new InitialContext();
-      DataSource ds = (DataSource)initCtx.lookup("java:/comp/env/jdbc/mariadb");
-      
+      DataSource ds = (DataSource) initCtx.lookup("java:/comp/env/jdbc/mariadb");
+
       try (Connection connection = ds.getConnection()) {
         // Passwort hashen
         String passwordHash = hashPassword(password);
-        
+
         // Passwort aktualisieren
-        PreparedStatement ps = connection.prepareStatement(
-            "UPDATE account SET password_hash = ? WHERE id = ?"
-        );
+        PreparedStatement ps =
+            connection.prepareStatement("UPDATE account SET password_hash = ? WHERE id = ?");
         ps.setString(1, passwordHash);
         ps.setInt(2, Integer.parseInt(accountId));
         int rowsAffected = ps.executeUpdate();
-        
+
         if (rowsAffected > 0) {
           out.println("<!DOCTYPE html><html><body>");
           out.println("<h2>Passwort geändert</h2>");
-          out.println("<p>Ihr Passwort wurde erfolgreich geändert. Sie können sich jetzt mit Ihrem neuen Passwort anmelden.</p>");
+          out.println(
+              "<p>Ihr Passwort wurde erfolgreich geändert. Sie können sich jetzt mit Ihrem neuen"
+                  + " Passwort anmelden.</p>");
           out.println("<p><a href='login'>Zum Login</a></p>");
           out.println("</body></html>");
         } else {
@@ -148,21 +155,21 @@ public class ResetPasswordServlet extends HttpServlet {
       e.printStackTrace(out);
     }
   }
-  
+
   private String hashPassword(String password) throws Exception {
     // PBKDF2 mit SHA-512 Implementierung
     SecureRandom random = new SecureRandom();
     byte[] salt = new byte[16];
     random.nextBytes(salt);
-    
+
     PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 128);
     SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
     byte[] hash = factory.generateSecret(spec).getEncoded();
-    
+
     // Salt und Hash als Base64 kodieren und mit : trennen
     String saltString = Base64.getEncoder().encodeToString(salt);
     String hashString = Base64.getEncoder().encodeToString(hash);
-    
+
     return saltString + ":" + hashString;
   }
-} 
+}

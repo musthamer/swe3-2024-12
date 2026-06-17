@@ -1,0 +1,45 @@
+/* Druckstile für Terminbestätigungen */
+@media print {
+  /* Navigationselemente ausblenden */
+  .nav-tabs, .no-print, button, #logoutLink {
+    display: none !important;
+  }
+  
+  /* Grundlegende Druckstile */
+  body {
+    background-color: white;
+    color: black;
+    font-family: serif;
+    font-size: 12pt;
+  }
+  
+  /* Termindetails */
+  .appointment-details {
+    border: 1px solid black;
+    padding: 10px;
+    margin-bottom: 20px;
+  }
+  
+  /* QR-Code */
+  .qr-code {
+    width: 150px;
+    height: 150px;
+  }
+  
+  /* Seitenumbrüche kontrollieren */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+  
+  table, figure {
+    page-break-inside: avoid;
+  }
+  
+  /* Fußzeile mit Hinweisen */
+  @page {
+    margin: 2cm;
+    @bottom-center {
+      content: "Bitte bringen Sie diesen Ausdruck zum Impftermin mit";
+    }
+  }
+} 
