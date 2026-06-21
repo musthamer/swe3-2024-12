@@ -1,9 +1,10 @@
 package hbv.web;
-import java.io.*;
+
+import hbv.service.AccountService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
+import java.io.*;
 import java.util.*;
-import hbv.service.AccountService;
 import org.json.JSONObject;
 
 public class LoginServlet extends HttpServlet {
@@ -13,7 +14,7 @@ public class LoginServlet extends HttpServlet {
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws IOException, ServletException {
-    
+
     // Direkte GET-Anfragen an das Servlet leiten zum Login-Formular weiter
     response.sendRedirect(request.getContextPath() + "/");
   }
@@ -25,14 +26,14 @@ public class LoginServlet extends HttpServlet {
     String email = request.getParameter("email");
     String password = request.getParameter("password");
     String redirect = request.getParameter("redirect");
-    
+
     response.setContentType("application/json");
     PrintWriter out = response.getWriter();
     Map<String, Object> jsonResponse = new HashMap<>();
-    
+
     try {
       Map<String, Object> authResult = accountService.authenticate(email, password);
-      
+
       if ((Boolean) authResult.get("success")) {
         HttpSession session = request.getSession(true);
         session.setAttribute("loggedin", true);
@@ -40,7 +41,7 @@ public class LoginServlet extends HttpServlet {
         session.setAttribute("userId", authResult.get("userId"));
         session.setAttribute("userRole", authResult.get("userRole"));
         session.setAttribute("userName", authResult.get("userName"));
-        
+
         // Weiterleitung basierend auf der Benutzerrolle
         String redirectUrl;
         if ("ADMIN".equals(authResult.get("userRole"))) {
@@ -48,7 +49,7 @@ public class LoginServlet extends HttpServlet {
         } else {
           redirectUrl = redirect != null ? redirect : "#/booking";
         }
-        
+
         jsonResponse.put("success", true);
         jsonResponse.put("message", "Login erfolgreich");
         jsonResponse.put("redirectUrl", redirectUrl);
@@ -61,7 +62,7 @@ public class LoginServlet extends HttpServlet {
       jsonResponse.put("message", "Fehler bei der Anmeldung: " + e.getMessage());
       e.printStackTrace(out);
     }
-    
+
     out.println(new JSONObject(jsonResponse).toString());
   }
 }

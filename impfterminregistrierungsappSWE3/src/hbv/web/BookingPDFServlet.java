@@ -1,11 +1,10 @@
 package hbv.web;
 
+import hbv.service.BookingService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.*;
 import java.util.Map;
-
-import hbv.service.BookingService;
 
 public class BookingPDFServlet extends HttpServlet {
 
@@ -40,28 +39,34 @@ public class BookingPDFServlet extends HttpServlet {
     }
 
     try {
-      Map<String, Object> appointment = bookingService.getConfirmedAppointmentForAccount(bookingId, userId);
+      Map<String, Object> appointment =
+          bookingService.getConfirmedAppointmentForAccount(bookingId, userId);
 
       if (appointment != null) {
         ServletContext ctx = getServletContext();
-        byte[] pdfData = PDFGenerator.generateVaccinationConfirmation(
-            (String) appointment.get("personName"),
-            (java.util.Date) appointment.get("startTime"),
-            (String) appointment.get("centerName"),
-            (String) appointment.get("vaccineName"),
-            bookingId,
-            ctx.getInitParameter("baseurl"),
-            ctx.getInitParameter("webapp"));
+        byte[] pdfData =
+            PDFGenerator.generateVaccinationConfirmation(
+                (String) appointment.get("personName"),
+                (java.util.Date) appointment.get("startTime"),
+                (String) appointment.get("centerName"),
+                (String) appointment.get("vaccineName"),
+                bookingId,
+                ctx.getInitParameter("baseurl"),
+                ctx.getInitParameter("webapp"));
 
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=impftermin_" + bookingId + ".pdf");
+        response.setHeader(
+            "Content-Disposition", "attachment; filename=impftermin_" + bookingId + ".pdf");
         response.setContentLength(pdfData.length);
 
         ServletOutputStream outputStream = response.getOutputStream();
         outputStream.write(pdfData);
         outputStream.flush();
       } else {
-        showError(response, "Die Buchung konnte nicht gefunden werden oder gehört nicht zu Ihrem Account oder wurde storniert.");
+        showError(
+            response,
+            "Die Buchung konnte nicht gefunden werden oder gehört nicht zu Ihrem Account oder wurde"
+                + " storniert.");
       }
     } catch (Exception e) {
       showError(response, "Es ist ein Fehler aufgetreten: " + e.getMessage());

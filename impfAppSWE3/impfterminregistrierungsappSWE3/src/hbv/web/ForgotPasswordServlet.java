@@ -1,22 +1,22 @@
 package hbv.web;
 
+import hbv.messaging.EmailMessageFactory;
+import hbv.messaging.RedisEmailSender;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.*;
-import java.sql.*;
-import javax.sql.*;
-import javax.naming.*;
 import java.security.SecureRandom;
+import java.sql.*;
 import java.util.*;
-
-import hbv.messaging.EmailMessageFactory;
-import hbv.messaging.RedisEmailSender;
+import javax.naming.*;
+import javax.sql.*;
 import redis.clients.jedis.Jedis;
 
 public class ForgotPasswordServlet extends HttpServlet {
 
   private static final String SUCCESS_MESSAGE =
-      "Falls ein Account mit dieser E-Mail-Adresse existiert, haben wir Ihnen einen Link zum Zurücksetzen Ihres Passworts gesendet.";
+      "Falls ein Account mit dieser E-Mail-Adresse existiert, haben wir Ihnen einen Link zum"
+          + " Zurücksetzen Ihres Passworts gesendet.";
 
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -46,9 +46,10 @@ public class ForgotPasswordServlet extends HttpServlet {
       DataSource ds = (DataSource) initCtx.lookup("java:/comp/env/jdbc/mariadb");
 
       try (Connection connection = ds.getConnection()) {
-        PreparedStatement ps = connection.prepareStatement(
-            "SELECT a.id, p.first_name FROM account a JOIN person p ON a.person_id = p.id WHERE a.email = ?"
-        );
+        PreparedStatement ps =
+            connection.prepareStatement(
+                "SELECT a.id, p.first_name FROM account a JOIN person p ON a.person_id = p.id WHERE"
+                    + " a.email = ?");
         ps.setString(1, email);
         ResultSet rs = ps.executeQuery();
 
@@ -57,7 +58,8 @@ public class ForgotPasswordServlet extends HttpServlet {
           String firstName = rs.getString("first_name");
 
           String resetCode = generateResetCode();
-          java.sql.Timestamp expiryTime = new java.sql.Timestamp(System.currentTimeMillis() + 3600 * 1000);
+          java.sql.Timestamp expiryTime =
+              new java.sql.Timestamp(System.currentTimeMillis() + 3600 * 1000);
 
           Jedis jedis = JedisAdapter.getJedis();
           String key = "reset:" + resetCode;
@@ -86,7 +88,8 @@ public class ForgotPasswordServlet extends HttpServlet {
     }
   }
 
-  private void writeJson(HttpServletResponse response, boolean success, String message) throws IOException {
+  private void writeJson(HttpServletResponse response, boolean success, String message)
+      throws IOException {
     response.setContentType("application/json; charset=UTF-8");
     PrintWriter out = response.getWriter();
     out.println("{\"success\":" + success + ",\"message\":\"" + escapeJson(message) + "\"}");
@@ -131,7 +134,8 @@ public class ForgotPasswordServlet extends HttpServlet {
       String resetUrl = baseUrl + "/" + webapp + "/reset-password?code=" + resetCode;
 
       RedisEmailSender.clearSession(sessionId);
-      RedisEmailSender.send(EmailMessageFactory.passwordReset(email, firstName, resetUrl), sessionId);
+      RedisEmailSender.send(
+          EmailMessageFactory.passwordReset(email, firstName, resetUrl), sessionId);
     } catch (Exception e) {
       e.printStackTrace();
     }
