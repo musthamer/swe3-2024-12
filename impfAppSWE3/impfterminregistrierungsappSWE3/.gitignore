@@ -1,0 +1,9 @@
+# Lokale Konfiguration (pro Student, aus configure.sh)
+local/config.txt
+local/netrc
+local/.db-initialized
+
+# Build-Artefakte
+build/
+target/
+tmp/

@@ -1,0 +1,205 @@
+body {
+  font-family: Arial;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f4;
+}
+
+.container {
+  width: 95%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.centered-container,
+.booking-view {
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.centered-container {
+  max-width: 500px;
+}
+
+.booking-view {
+  max-width: 960px;
+  width: 100%;
+}
+
+.logo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.auth-links {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.hidden {
+  display: none;
+}
+
+h1 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+h2 {
+  color: #444;
+  margin: 20px 0 10px;
+}
+
+a {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Infobox als leicht hervorgehobenes Element */
+.info-box {
+  background-color: #e6f2ff;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.form-container {
+  background-color: #fff;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+/* Einheitliche Input-Felder */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+}
+
+/* Buttons */
+button, 
+input[type="submit"] {
+  background-color: #0066cc;
+  color: #fff;
+  padding: 8px 15px;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover, 
+input[type="submit"]:hover {
+  background-color: #0052a3;
+}
+
+/* Tabellen-Grundstruktur */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+
+table, th, td {
+  border: 1px solid #ddd;
+}
+
+th, td {
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #f2f2f2;
+}
+
+tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* Feedback-Meldungen */
+.success-message {
+  background-color: #dff0d8;
+  color: #3c763d;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+
+.error-message {
+  background-color: #f2dede;
+  color: #a94442;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+
+.booking-for-group .inline-radio {
+  display: inline-block;
+  margin-right: 16px;
+  font-weight: normal;
+}
+
+.booking-for-group .inline-radio input {
+  margin-right: 4px;
+}
+
+.readonly-field {
+  display: block;
+  padding: 8px 0;
+  color: #555;
+}
+
+.tab {
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+  margin-bottom: 20px;
+}
+
+.tab .tablinks {
+  background-color: inherit;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+}
+
+.tab .tablinks:hover {
+  background-color: #ddd;
+}
+
+.tab .tablinks.active {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.tabcontent {
+  display: none;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-top: none;
+}
+
+.tabcontent.active {
+  display: block;
+}
