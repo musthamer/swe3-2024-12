@@ -4,14 +4,156 @@
     <meta charset='utf-8'>
     <title>Impfterminbuchung</title>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+      .centered-container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      }
+      
+      .logo {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      
+      .register-link {
+        text-align: center;
+        margin-top: 20px;
+      }
+    </style>
   </head>
   <body>
     <div class="container">
-      <div id="app" class="centered-container"></div>
-    </div>
+      <div class="centered-container" id="welcomeBox">
+        <div class="logo">
+          <h1>Impftermin-Portal</h1>
+          <p>Willkommen beim Impftermin-Portal der Stadt Nemerb</p>
+        </div>
+        <div id="statusMessage"></div>
+        <div class="form-container">
+          <form id="loginForm">
+            <div class="form-group">
+              <label for="email">E-Mail:</label>
+              <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+              <label for="password">Passwort:</label>
+              <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+              <input type="submit" value="Anmelden" class="btn-primary">
+            </div>
+          </form>
+        </div>
+        <div class="register-link">
+          <p><a href="#/forgot">Passwort vergessen?</a></p>
+          <p>Noch kein Konto? <a href="#/register">Hier registrieren</a></p>
+        </div>
+      </div>
 
+      <!-- SPA Root: Wird bei Hash-Routen genutzt -->
+      <div id="app" style="display:none;"></div>
+    </div>
+    
     <script src="js/main.js"></script>
-    <script src="js/booking.js"></script>
+    <script>
+      function sendRequest(method, url, params, callback) {
+        const xhr = new XMLHttpRequest();
+        xhr.open(method, url, true);
+        xhr.withCredentials = true;
+        
+        if (method === 'POST') {
+          xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        }
+        
+        xhr.onload = function() {
+          let data;
+          try {
+            data = JSON.parse(xhr.responseText);
+          } catch (e) {
+            showMessage('statusMessage', 'Fehler beim Parsen der Antwort', true);
+            return;
+          }
+          
+          if (xhr.status >= 200 && xhr.status < 300) {
+            callback(data);
+          } else {
+            showMessage('statusMessage', data.message || 'Fehler bei der Anfrage', true);
+          }
+        };
+        
+        xhr.onerror = function() {
+          showMessage('statusMessage', 'Netzwerkfehler bei der Anfrage', true);
+        };
+        
+        xhr.send(params ? params.toString() : null);
+      }
+      
+      document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        if (!email || !password) {
+          showMessage('statusMessage', 'Bitte füllen Sie alle Felder aus.', true);
+          return;
+        }
+        
+        doLogin(email, password);
+      });
+      
+      function doLogin(email, password) {
+        const params = new URLSearchParams();
+        params.append('email', email);
+        params.append('password', password);
+        
+        sendRequest('POST', 'login', params, function(data) {
+          if (data.success) {
+            // USER: direkt in die SPA-Booking-Route
+            // ADMIN: Backend liefert i.d.R. "admin"
+            if (!data.redirectUrl || data.redirectUrl === 'booking.html') {
+              window.location.href = 'index.html#/booking';
+            } else {
+              window.location.href = data.redirectUrl;
+            }
+          } else {
+            showMessage('statusMessage', data.message || 'Fehler bei der Anmeldung', true);
+          }
+        });
+      }
+      
+      function checkIfAlreadyLoggedIn() {
+        // Bei SPA-Routen keinen Auto-Redirect auslösen (sonst Redirect-Schleifen mit Redirect-Fallback-Seiten)
+        const hash = window.location.hash || '';
+        if (
+          hash.startsWith('#/register') ||
+          hash.startsWith('#/forgot') ||
+          hash.startsWith('#/booking') ||
+          hash.startsWith('#/admin') ||
+          hash.startsWith('#/login') ||
+          hash.startsWith('#/logout')
+        ) {
+          return;
+        }
+        sendRequest('GET', 'api/check-login', null, function(data) {
+          if (data.loggedIn) {
+            if (data.userRole === 'ADMIN') {
+              window.location.href = 'admin';
+            } else {
+              window.location.href = 'index.html#/booking';
+            }
+          }
+        });
+      }
+      
+      document.addEventListener('DOMContentLoaded', function() {
+        checkIfAlreadyLoggedIn();
+      });
+    </script>
     <script src="js/spa.js"></script>
   </body>
 </html>

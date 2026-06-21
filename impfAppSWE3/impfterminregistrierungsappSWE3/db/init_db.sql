@@ -168,7 +168,7 @@ WHERE DAYOFWEEK(DATE_ADD(CURDATE(), INTERVAL d.day_offset DAY)) NOT IN (1, 7);
 
 -- =============================================================================
 -- 6) Admin-Benutzer
---    Passwort: admin123  (PBKDF2-HMAC-SHA512, 210000 Iterationen, Hex-Kodierung)
+--    Passwort: admin123  (PBKDF2, kompatibel mit PasswordUtils)
 -- =============================================================================
 
 INSERT INTO person (first_name, last_name, date_of_birth, email)
@@ -180,7 +180,7 @@ INSERT INTO account (person_id, email, password_hash, is_admin)
 VALUES (
   @admin_person_id,
   'admin@impfservice.de',
-  '6161616161616161:89dedf293f2af01668d4f0322bbd853b60831aa877caa3fbd0d5d7014009a74532fe5661d0132f90129ac396151c3615aceac46c75c9fc94badb0b2aa43cc908',
+  'PBKDF2WithHmacSHA1:65536:128:4NQPxKHkmvDEkN9d4vD/wQ==:hxr1kkQ9B9yWCYDw9I9qSg==',
   TRUE
 );
 

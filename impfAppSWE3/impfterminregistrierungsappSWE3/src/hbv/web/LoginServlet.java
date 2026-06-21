@@ -16,7 +16,7 @@ public class LoginServlet extends HttpServlet {
       throws IOException, ServletException {
 
     // Direkte GET-Anfragen an das Servlet leiten zum Login-Formular weiter
-    response.sendRedirect(request.getContextPath() + "/");
+    response.sendRedirect("login.html");
   }
 
   @Override
@@ -47,7 +47,7 @@ public class LoginServlet extends HttpServlet {
         if ("ADMIN".equals(authResult.get("userRole"))) {
           redirectUrl = "admin";
         } else {
-          redirectUrl = redirect != null ? redirect : "#/booking";
+          redirectUrl = redirect != null ? redirect : "booking.html";
         }
 
         jsonResponse.put("success", true);

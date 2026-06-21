@@ -42,6 +42,10 @@ public class ApiServlet extends HttpServlet {
         getTimeslots(request, jsonResponse);
       } else if ("/vaccine-inventory".equals(action)) {
         getVaccineInventory(request, jsonResponse);
+      } else if ("/all-centers-stats".equals(action)) {
+        getAllCentersStats(request, response, jsonResponse);
+      } else if ("/center-stats".equals(action)) {
+        getCenterStats(request, response, jsonResponse);
       } else if ("/appointments".equals(action)) {
         getAppointments(request, jsonResponse);
       } else if ("/appointment-details".equals(action)) {
@@ -76,6 +80,8 @@ public class ApiServlet extends HttpServlet {
         bookAppointment(request, response, jsonResponse);
       } else if ("/appointments".equals(action)) {
         postAppointments(request, jsonResponse);
+      } else if ("/update-vaccine-inventory".equals(action)) {
+        updateVaccineInventory(request, jsonResponse);
       } else {
         jsonResponse.put("success", false);
         jsonResponse.put("message", "Unbekannte API-Anfrage");
@@ -159,9 +165,58 @@ public class ApiServlet extends HttpServlet {
     String centerIdStr = request.getParameter("center_id");
     if (centerIdStr != null) {
       int centerId = Integer.parseInt(centerIdStr);
-      Map<String, Object> inventory = centerService.getVaccineInventory(centerId);
+      VaccineInventoryService inventoryService = new VaccineInventoryService();
+      Map<String, Object> inventory = inventoryService.getVaccineInventory(centerId);
       jsonResponse.putAll(inventory);
       jsonResponse.put("success", true);
+    }
+  }
+
+  private void getAllCentersStats(
+      HttpServletRequest request, HttpServletResponse response, Map<String, Object> jsonResponse)
+      throws Exception {
+    HttpSession session = request.getSession(false);
+    String userRole = (session != null) ? (String) session.getAttribute("userRole") : null;
+
+    if (session != null && "ADMIN".equals(userRole)) {
+      List<Map<String, Object>> statsData = centerService.getAllCentersStatistics();
+      jsonResponse.put("success", true);
+      jsonResponse.put("stats", statsData);
+    } else {
+      jsonResponse.put("success", false);
+      jsonResponse.put("message", "Keine Berechtigung für diese Aktion");
+      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+    }
+  }
+
+  private void getCenterStats(
+      HttpServletRequest request, HttpServletResponse response, Map<String, Object> jsonResponse)
+      throws Exception {
+    HttpSession session = request.getSession(false);
+    String userRole = (session != null) ? (String) session.getAttribute("userRole") : null;
+
+    if (session == null || !"ADMIN".equals(userRole)) {
+      jsonResponse.put("success", false);
+      jsonResponse.put("message", "Keine Berechtigung für diese Aktion");
+      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+      return;
+    }
+
+    String centerIdStr = request.getParameter("center_id");
+    if (centerIdStr == null || centerIdStr.trim().isEmpty()) {
+      jsonResponse.put("success", false);
+      jsonResponse.put("message", "Keine Zentrums-ID angegeben");
+      return;
+    }
+
+    int centerId = Integer.parseInt(centerIdStr);
+    Map<String, Object> stats = centerService.getCenterStatistics(centerId);
+    if (stats.isEmpty()) {
+      jsonResponse.put("success", false);
+      jsonResponse.put("message", "Impfzentrum nicht gefunden");
+    } else {
+      jsonResponse.put("success", true);
+      jsonResponse.put("stats", stats);
     }
   }
 
@@ -310,13 +365,37 @@ public class ApiServlet extends HttpServlet {
               Integer.parseInt(vaccineId),
               personId,
               baseUrl,
-              webapp,
-              session.getId());
+              webapp);
 
       jsonResponse.putAll(bookingResult);
     } else {
       jsonResponse.put("success", false);
       jsonResponse.put("message", "Fehlende Parameter für die Buchung");
+    }
+  }
+
+  private void updateVaccineInventory(HttpServletRequest request, Map<String, Object> jsonResponse)
+      throws Exception {
+    HttpSession session = request.getSession(false);
+    String userRole = (session != null) ? (String) session.getAttribute("userRole") : null;
+
+    if (userRole != null && userRole.equals("ADMIN")) {
+      String centerIdStr = request.getParameter("center_id");
+      String vaccineIdStr = request.getParameter("vaccine_id");
+      String dosesStr = request.getParameter("doses");
+
+      if (centerIdStr != null && vaccineIdStr != null && dosesStr != null) {
+        VaccineInventoryService inventoryService = new VaccineInventoryService();
+        Map<String, Object> result =
+            inventoryService.updateVaccineInventory(
+                Integer.parseInt(centerIdStr),
+                Integer.parseInt(vaccineIdStr),
+                Integer.parseInt(dosesStr));
+        jsonResponse.putAll(result);
+      }
+    } else {
+      jsonResponse.put("success", false);
+      jsonResponse.put("message", "Keine Berechtigung für diese Operation");
     }
   }
 }

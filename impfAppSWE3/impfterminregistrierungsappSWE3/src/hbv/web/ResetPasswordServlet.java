@@ -18,7 +18,7 @@ public class ResetPasswordServlet extends HttpServlet {
     String resetCode = request.getParameter("code");
 
     if (resetCode == null || resetCode.isEmpty()) {
-      response.sendRedirect(request.getContextPath() + "/");
+      response.sendRedirect("login");
       return;
     }
 
@@ -133,7 +133,7 @@ public class ResetPasswordServlet extends HttpServlet {
           out.println(
               "<p>Ihr Passwort wurde erfolgreich geändert. Sie können sich jetzt mit Ihrem neuen"
                   + " Passwort anmelden.</p>");
-          out.println("<p><a href='./'>Zum Login</a></p>");
+          out.println("<p><a href='login'>Zum Login</a></p>");
           out.println("</body></html>");
         } else {
           out.println("<!DOCTYPE html><html><body>");

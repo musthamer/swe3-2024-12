@@ -1,7 +1,7 @@
 package hbv.web;
 
 import hbv.messaging.EmailMessageFactory;
-import hbv.messaging.RedisEmailSender;
+import hbv.messaging.EmailService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.*;
@@ -18,7 +18,7 @@ public class ActivateServlet extends HttpServlet {
     String activationCode = request.getParameter("code");
 
     if (activationCode == null || activationCode.trim().isEmpty()) {
-      response.sendRedirect(request.getContextPath() + "/");
+      response.sendRedirect("login");
       return;
     }
 
@@ -81,11 +81,11 @@ public class ActivateServlet extends HttpServlet {
                     + firstName
                     + ", Ihr Account wurde erfolgreich aktiviert. Sie können sich jetzt"
                     + " anmelden.</p>");
-            out.println("<p><a href='./'>Zum Login</a></p>");
+            out.println("<p><a href='login'>Zum Login</a></p>");
             out.println("</body></html>");
 
             // Bestätigungs-E-Mail "senden" (in Redis speichern)
-            sendActivationConfirmationEmail(request.getSession().getId(), email, firstName);
+            sendActivationConfirmationEmail(email, firstName);
 
           } catch (Exception e) {
             // Transaktion zurückrollen bei Fehler
@@ -113,9 +113,9 @@ public class ActivateServlet extends HttpServlet {
     }
   }
 
-  private void sendActivationConfirmationEmail(String sessionId, String email, String firstName) {
+  private void sendActivationConfirmationEmail(String email, String firstName) {
     try {
-      RedisEmailSender.send(EmailMessageFactory.activation(email, firstName), sessionId);
+      EmailService.send(EmailMessageFactory.activation(email, firstName));
     } catch (Exception e) {
       e.printStackTrace();
     }

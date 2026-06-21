@@ -1,7 +1,7 @@
 package hbv.web;
 
 import hbv.messaging.EmailMessageFactory;
-import hbv.messaging.RedisEmailSender;
+import hbv.messaging.EmailService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.*;
@@ -14,30 +14,41 @@ import redis.clients.jedis.Jedis;
 
 public class ForgotPasswordServlet extends HttpServlet {
 
-  private static final String SUCCESS_MESSAGE =
-      "Falls ein Account mit dieser E-Mail-Adresse existiert, haben wir Ihnen einen Link zum"
-          + " Zurücksetzen Ihres Passworts gesendet.";
-
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
-      throws IOException {
-    response.sendRedirect(request.getContextPath() + "/#/forgot");
+      throws IOException, ServletException {
+    // Formular zum Anfordern eines Reset-Links anzeigen
+    response.setContentType("text/html");
+    PrintWriter out = response.getWriter();
+    out.println("<!DOCTYPE html>");
+    out.println("<html><head><title>Passwort vergessen</title></head><body>");
+    out.println("<h2>Passwort zurücksetzen</h2>");
+    out.println(
+        "<p>Bitte geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link zum Zurücksetzen"
+            + " Ihres Passworts.</p>");
+    out.println("<form method='POST'>");
+    out.println("E-Mail: <input type='email' name='email' required /><br/>");
+    out.println("<input type='submit' value='Link anfordern'/>");
+    out.println("</form>");
+    out.println("<p><a href='login'>Zurück zum Login</a></p>");
+    out.println("</body></html>");
   }
 
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response)
       throws IOException, ServletException {
     request.setCharacterEncoding("UTF-8");
-    boolean ajaxRequest = "XMLHttpRequest".equals(request.getHeader("X-Requested-With"));
+    response.setContentType("text/html");
+    PrintWriter out = response.getWriter();
 
     String email = request.getParameter("email");
 
     if (email == null || email.trim().isEmpty()) {
-      if (ajaxRequest) {
-        writeJson(response, false, "Bitte geben Sie eine E-Mail-Adresse ein.");
-      } else {
-        writeHtmlError(response, "Bitte geben Sie eine E-Mail-Adresse ein.");
-      }
+      out.println("<!DOCTYPE html><html><body>");
+      out.println("<h2>Fehler</h2>");
+      out.println("<p>Bitte geben Sie eine E-Mail-Adresse ein.</p>");
+      out.println("<p><a href='forgot-password'>Zurück</a></p>");
+      out.println("</body></html>");
       return;
     }
 
@@ -46,6 +57,7 @@ public class ForgotPasswordServlet extends HttpServlet {
       DataSource ds = (DataSource) initCtx.lookup("java:/comp/env/jdbc/mariadb");
 
       try (Connection connection = ds.getConnection()) {
+        // Prüfen, ob die E-Mail existiert und Benutzerdaten abrufen
         PreparedStatement ps =
             connection.prepareStatement(
                 "SELECT a.id, p.first_name FROM account a JOIN person p ON a.person_id = p.id WHERE"
@@ -57,66 +69,42 @@ public class ForgotPasswordServlet extends HttpServlet {
           int accountId = rs.getInt("id");
           String firstName = rs.getString("first_name");
 
+          // Reset-Code generieren
           String resetCode = generateResetCode();
           java.sql.Timestamp expiryTime =
-              new java.sql.Timestamp(System.currentTimeMillis() + 3600 * 1000);
+              new java.sql.Timestamp(System.currentTimeMillis() + 3600 * 1000); // 1 Stunde gültig
 
+          // Code in Redis speichern
           Jedis jedis = JedisAdapter.getJedis();
           String key = "reset:" + resetCode;
           jedis.hset(key, "account_id", String.valueOf(accountId));
           jedis.hset(key, "email", email);
           jedis.hset(key, "expiry", String.valueOf(expiryTime.getTime()));
-          jedis.expire(key, 3600);
+          jedis.expire(key, 3600); // 1 Stunde TTL
           JedisAdapter.releaseJedis(jedis);
 
-          sendResetEmail(request.getSession().getId(), email, firstName, resetCode);
+          // Reset-E-Mail "senden" (in Redis speichern)
+          sendResetEmail(email, firstName, resetCode);
         }
 
-        if (ajaxRequest) {
-          writeJson(response, true, SUCCESS_MESSAGE);
-        } else {
-          writeHtmlSuccess(response);
-        }
+        // Gleiche Meldung unabhängig davon, ob die E-Mail existiert
+        out.println("<!DOCTYPE html><html><body>");
+        out.println("<h2>Link versendet</h2>");
+        out.println(
+            "<p>Falls ein Account mit dieser E-Mail-Adresse existiert, haben wir Ihnen einen Link"
+                + " zum Zurücksetzen Ihres Passworts gesendet.</p>");
+        out.println("<p>Bitte überprüfen Sie Ihren Posteingang (und ggf. den Spam-Ordner).</p>");
+        out.println("<p><a href='login'>Zurück zum Login</a></p>");
+        out.println("</body></html>");
       }
     } catch (Exception e) {
-      if (ajaxRequest) {
-        writeJson(response, false, "Es ist ein Fehler aufgetreten: " + e.getMessage());
-      } else {
-        writeHtmlError(response, "Es ist ein Fehler aufgetreten: " + e.getMessage());
-      }
-      e.printStackTrace();
+      out.println("<!DOCTYPE html><html><body>");
+      out.println("<h2>Fehler</h2>");
+      out.println("<p>Es ist ein Fehler aufgetreten: " + e.getMessage() + "</p>");
+      out.println("<p><a href='forgot-password'>Zurück</a></p>");
+      out.println("</body></html>");
+      e.printStackTrace(out);
     }
-  }
-
-  private void writeJson(HttpServletResponse response, boolean success, String message)
-      throws IOException {
-    response.setContentType("application/json; charset=UTF-8");
-    PrintWriter out = response.getWriter();
-    out.println("{\"success\":" + success + ",\"message\":\"" + escapeJson(message) + "\"}");
-  }
-
-  private void writeHtmlSuccess(HttpServletResponse response) throws IOException {
-    response.setContentType("text/html; charset=UTF-8");
-    PrintWriter out = response.getWriter();
-    out.println("<!DOCTYPE html><html><body>");
-    out.println("<h2>Link versendet</h2>");
-    out.println("<p>" + SUCCESS_MESSAGE + "</p>");
-    out.println("<p><a href='./'>Zurück zum Login</a></p>");
-    out.println("</body></html>");
-  }
-
-  private void writeHtmlError(HttpServletResponse response, String message) throws IOException {
-    response.setContentType("text/html; charset=UTF-8");
-    PrintWriter out = response.getWriter();
-    out.println("<!DOCTYPE html><html><body>");
-    out.println("<h2>Fehler</h2>");
-    out.println("<p>" + message + "</p>");
-    out.println("<p><a href='./#/forgot'>Zurück</a></p>");
-    out.println("</body></html>");
-  }
-
-  private String escapeJson(String value) {
-    return value.replace("\\", "\\\\").replace("\"", "\\\"");
   }
 
   private String generateResetCode() {
@@ -126,16 +114,14 @@ public class ForgotPasswordServlet extends HttpServlet {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
-  private void sendResetEmail(String sessionId, String email, String firstName, String resetCode) {
+  private void sendResetEmail(String email, String firstName, String resetCode) {
     try {
       ServletContext ctx = getServletContext();
       String baseUrl = ctx.getInitParameter("baseurl");
       String webapp = ctx.getInitParameter("webapp");
       String resetUrl = baseUrl + "/" + webapp + "/reset-password?code=" + resetCode;
 
-      RedisEmailSender.clearSession(sessionId);
-      RedisEmailSender.send(
-          EmailMessageFactory.passwordReset(email, firstName, resetUrl), sessionId);
+      EmailService.send(EmailMessageFactory.passwordReset(email, firstName, resetUrl));
     } catch (Exception e) {
       e.printStackTrace();
     }

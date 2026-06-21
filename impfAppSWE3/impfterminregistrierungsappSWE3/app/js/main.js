@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 // Gemeinsame Hilfsfunktionen
+=======
+// Eine gemeinsame main.js-Datei für grundlegende Funktionen
+>>>>>>> Stashed changes
 function showMessage(elementId, message, isError = false) {
   const element = document.getElementById(elementId);
   if (element) {
@@ -6,68 +10,117 @@ function showMessage(elementId, message, isError = false) {
   }
 }
 
-window.sendRequest = function(method, url, params, callback, extraHeaders, options) {
-  options = options || {};
+// Zentrale Request-Funktion (immer verfügbar, nicht erst nach checkLoginStatus())
+window.sendRequest = window.sendRequest || function(method, url, params, callback) {
   const xhr = new XMLHttpRequest();
   xhr.open(method, url, true);
   xhr.withCredentials = true;
 
-  if (options.responseType) {
-    xhr.responseType = options.responseType;
-  }
-
-  const isFormData = params instanceof FormData;
-  if (method === 'POST' && !isFormData) {
+  if (method === 'POST') {
     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-  }
-  if (extraHeaders) {
-    Object.keys(extraHeaders).forEach(function(key) {
-      xhr.setRequestHeader(key, extraHeaders[key]);
-    });
   }
 
   xhr.onload = function() {
-    if (options.responseType === 'blob') {
-      if (callback) {
-        callback(xhr.response, xhr.status);
-      }
-      return;
-    }
-
     let data;
     try {
       data = JSON.parse(xhr.responseText);
     } catch (e) {
       console.error('Fehler beim Parsen der Antwort:', e);
-      if (options.onParseError) {
-        options.onParseError();
-      }
       return;
     }
 
-    if (callback) {
-      callback(data, xhr.status);
+    if (xhr.status >= 200 && xhr.status < 300) {
+      if (callback) callback(data);
+    } else {
+      console.error('HTTP-Fehler:', xhr.status);
+      if (callback) callback(data);
     }
   };
 
   xhr.onerror = function() {
     console.error('Netzwerkfehler bei der Anfrage');
-    if (options.onNetworkError) {
-      options.onNetworkError();
-    }
   };
 
-  xhr.send(isFormData ? params : (params ? params.toString() : null));
+  xhr.send(params ? params.toString() : null);
 };
 
+function sendFormData(url, formData, successCallback, errorCallback) {
+  const xhr = new XMLHttpRequest();
+  
+  xhr.open('POST', url, true);
+  
+  xhr.withCredentials = true;
+  
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      // Erfolgreich: JSON parsen und Callback aufrufen
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (successCallback) {
+          successCallback(data);
+        }
+      } catch (e) {
+        // Fehler beim JSON-Parsing
+        if (errorCallback) {
+          errorCallback(new Error('Fehler beim Parsen der JSON-Antwort'));
+        } else {
+          console.error('Fehler beim Parsen der Antwort:', e);
+        }
+      }
+    } else {
+      if (errorCallback) {
+        errorCallback(new Error('Netzwerkantwort war nicht ok: ' + xhr.status));
+      } else {
+        console.error('HTTP-Fehler:', xhr.status);
+      }
+    }
+  };
+  
+  xhr.onerror = function() {
+    if (errorCallback) {
+      errorCallback(new Error('Netzwerkfehler bei der Anfrage'));
+    } else {
+      console.error('Netzwerkfehler bei der Anfrage');
+    }
+  };
+  
+  // Anfrage senden
+  xhr.send(formData);
+}
+
+// Funktion zum Prüfen des Login-Status mit XMLHttpRequest
 function checkLoginStatus(callback) {
   window.sendRequest('GET', 'api/check-login', null, callback);
 }
 
-window.navigateAfterLogin = function(data) {
-  if (data.redirectUrl === 'admin' || (data.redirectUrl && data.redirectUrl.endsWith('/admin'))) {
-    window.location.href = 'admin';
-    return;
+function logout() {
+  window.sendRequest('POST', 'logout', null, function() {
+    window.location.href = 'index.html';
+  });
+}
+
+// Funktion zum Umleiten nicht angemeldeter Benutzer
+function redirectIfNotLoggedIn() {
+  checkLoginStatus(function(data) {
+    if (!data.loggedIn) {
+      window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href);
+    }
+  });
+}
+
+// Datum formatieren
+function formatDate(dateString) {
+  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+  return new Date(dateString).toLocaleDateString('de-DE', options);
+}
+
+// Standardfunktion für alle Formulare
+function setupForm(formId, submitHandler) {
+  const form = document.getElementById(formId);
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      submitHandler(this);
+    });
   }
-  window.location.hash = '#/booking';
-};
+} 

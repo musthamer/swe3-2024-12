@@ -1,3 +1,7 @@
+/**
+ * Admin-Dashboard: nur XMLHttpRequest (kein fetch).
+ * Einfache Callbacks statt async/await.
+ */
 const API_BASE = '../api';
 
 function xhrGetJson(url, onDone) {

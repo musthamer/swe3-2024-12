@@ -1,7 +1,7 @@
 package hbv.web;
 
 import hbv.messaging.EmailMessageFactory;
-import hbv.messaging.RedisEmailSender;
+import hbv.messaging.EmailService;
 import hbv.utils.PasswordUtils;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
@@ -27,7 +27,7 @@ public class RegisterServlet extends HttpServlet {
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
-    response.sendRedirect(request.getContextPath() + "/#/register");
+    showRegisterForm(response);
   }
 
   @Override
@@ -45,13 +45,13 @@ public class RegisterServlet extends HttpServlet {
       if (ajaxRequest) {
         writeJsonResponse(response, false, validationError, null);
       } else {
-        response.sendRedirect(request.getContextPath() + "/#/register");
+        showErrorPage(response, "Registrierung fehlgeschlagen", validationError);
       }
       return;
     }
 
     try {
-      registerUser(request, data);
+      registerUser(data);
 
       String successMessage =
           "Registrierung erfolgreich! Bitte prüfen Sie Ihre E-Mails, um Ihren Account zu"
@@ -60,14 +60,14 @@ public class RegisterServlet extends HttpServlet {
       if (ajaxRequest) {
         writeJsonResponse(response, true, successMessage, "emails");
       } else {
-        response.sendRedirect("emails");
+        showSuccessPage(response);
       }
 
     } catch (IllegalArgumentException e) {
       if (ajaxRequest) {
         writeJsonResponse(response, false, e.getMessage(), null);
       } else {
-        response.sendRedirect(request.getContextPath() + "/#/register");
+        showErrorPage(response, "Registrierung fehlgeschlagen", e.getMessage());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -77,7 +77,7 @@ public class RegisterServlet extends HttpServlet {
       if (ajaxRequest) {
         writeJsonResponse(response, false, errorMessage, null);
       } else {
-        response.sendRedirect(request.getContextPath() + "/#/register");
+        showErrorPage(response, "Fehler bei der Registrierung", errorMessage);
       }
     }
   }
@@ -114,7 +114,7 @@ public class RegisterServlet extends HttpServlet {
     return null;
   }
 
-  private void registerUser(HttpServletRequest request, RegistrationData data) throws Exception {
+  private void registerUser(RegistrationData data) throws Exception {
     DataSource ds = getDataSource();
 
     try (Connection connection = ds.getConnection()) {
@@ -132,8 +132,7 @@ public class RegisterServlet extends HttpServlet {
         String activationCode = generateActivationCode();
         insertActivation(connection, accountId, activationCode);
 
-        sendActivationEmail(
-            request.getSession().getId(), data.email, data.firstName, activationCode);
+        sendActivationEmail(data.email, data.firstName, activationCode);
 
         connection.commit();
       } catch (Exception e) {
@@ -231,20 +230,69 @@ public class RegisterServlet extends HttpServlet {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
-  private void sendActivationEmail(
-      String sessionId, String email, String firstName, String activationCode) {
+  private void sendActivationEmail(String email, String firstName, String activationCode) {
     try {
       ServletContext ctx = getServletContext();
       String baseUrl = ctx.getInitParameter("baseurl");
       String webapp = ctx.getInitParameter("webapp");
       String activationUrl = baseUrl + "/" + webapp + "/activate?code=" + activationCode;
 
-      RedisEmailSender.clearSession(sessionId);
-      RedisEmailSender.send(
-          EmailMessageFactory.registration(email, firstName, activationUrl), sessionId);
+      EmailService.send(EmailMessageFactory.registration(email, firstName, activationUrl));
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  private void showRegisterForm(HttpServletResponse response) throws IOException {
+    response.setContentType("text/html; charset=UTF-8");
+
+    PrintWriter out = response.getWriter();
+    out.println("<!DOCTYPE html>");
+    out.println("<html>");
+    out.println("<head><title>Registrierung</title></head>");
+    out.println("<body>");
+    out.println("<h2>Neuen Account erstellen</h2>");
+    out.println("<form method='POST'>");
+    out.println("Vorname: <input type='text' name='firstName' required /><br/>");
+    out.println("Nachname: <input type='text' name='lastName' required /><br/>");
+    out.println("Geburtsdatum: <input type='date' name='dateOfBirth' required /><br/>");
+    out.println("E-Mail: <input type='email' name='email' required /><br/>");
+    out.println("Passwort: <input type='password' name='password' required /><br/>");
+    out.println(
+        "Passwort wiederholen: <input type='password' name='passwordConfirm' required /><br/>");
+    out.println("<input type='submit' value='Registrieren' />");
+    out.println("</form>");
+    out.println("<p><a href='login'>Zurück zum Login</a></p>");
+    out.println("</body>");
+    out.println("</html>");
+  }
+
+  private void showErrorPage(HttpServletResponse response, String title, String message)
+      throws IOException {
+    response.setContentType("text/html; charset=UTF-8");
+
+    PrintWriter out = response.getWriter();
+    out.println("<!DOCTYPE html>");
+    out.println("<html><body>");
+    out.println("<h2>" + escapeHtml(title) + "</h2>");
+    out.println("<p>" + escapeHtml(message) + "</p>");
+    out.println("<p><a href='register'>Zurück zum Registrierungsformular</a></p>");
+    out.println("</body></html>");
+  }
+
+  private void showSuccessPage(HttpServletResponse response) throws IOException {
+    response.setContentType("text/html; charset=UTF-8");
+
+    PrintWriter out = response.getWriter();
+    out.println("<!DOCTYPE html>");
+    out.println("<html><body>");
+    out.println("<h2>Registrierung erfolgreich</h2>");
+    out.println(
+        "<p>Ihr Account wurde erfolgreich erstellt. Bitte prüfen Sie Ihre E-Mails, um Ihren Account"
+            + " zu aktivieren.</p>");
+    out.println("<p><a href='emails'>E-Mail anzeigen</a></p>");
+    out.println("<p><a href='login'>Zum Login</a></p>");
+    out.println("</body></html>");
   }
 
   private void writeJsonResponse(
@@ -286,6 +334,18 @@ public class RegisterServlet extends HttpServlet {
         .replace("\"", "\\\"")
         .replace("\n", "\\n")
         .replace("\r", "\\r");
+  }
+
+  private String escapeHtml(String value) {
+    if (value == null) {
+      return "";
+    }
+
+    return value
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;");
   }
 
   private static class RegistrationData {

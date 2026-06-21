@@ -1,80 +1,32 @@
 (function() {
   const appRoot = document.getElementById('app');
-
+  const welcomeBox = document.getElementById('welcomeBox');
   function redirectToAdmin() {
     window.location.replace('admin');
   }
 
-  function bindLoginForm(statusElementId) {
-    const form = document.getElementById('loginForm');
-    if (!form || form.dataset.bound === 'true') {
-      return;
-    }
-    form.dataset.bound = 'true';
-
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
-      if (!email || !password) {
-        showMessage(statusElementId, 'Bitte füllen Sie alle Felder aus.', true);
-        return;
-      }
-
-      const params = new URLSearchParams();
-      params.append('email', email);
-      params.append('password', password);
-
-      window.sendRequest('POST', 'login', params, function(data, status) {
-        if (status >= 200 && status < 300 && data.success) {
-          window.navigateAfterLogin(data);
-        } else {
-          showMessage(statusElementId, data.message || 'Fehler bei der Anmeldung', true);
-        }
-      });
-    });
+  // Hilfsfunktion: Script nur einmal laden
+  const loadedScripts = new Set();
+  function loadScriptOnce(src, callback) {
+    if (loadedScripts.has(src)) { if (callback) callback(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = function() { loadedScripts.add(src); if (callback) callback(); };
+    s.onerror = function() { console.error('Fehler beim Laden von', src); if (callback) callback(); };
+    document.body.appendChild(s);
   }
 
+  // Views als einfache Renderer-Funktionen
   const Views = {
     home: () => {
-      if (!appRoot) return;
-      appRoot.className = 'centered-container';
-      appRoot.innerHTML = [
-        '<div class="logo">',
-        '  <h1>Impftermin-Portal</h1>',
-        '  <p>Willkommen beim Impftermin-Portal der Stadt Nemerb</p>',
-        '</div>',
-        '<div id="loginStatus"></div>',
-        '<div class="form-container">',
-        '  <form id="loginForm">',
-        '    <div class="form-group">',
-        '      <label for="email">E-Mail:</label>',
-        '      <input type="email" id="email" name="email" required>',
-        '    </div>',
-        '    <div class="form-group">',
-        '      <label for="password">Passwort:</label>',
-        '      <input type="password" id="password" name="password" required>',
-        '    </div>',
-        '    <div class="form-group">',
-        '      <input type="submit" value="Anmelden" class="btn-primary">',
-        '    </div>',
-        '  </form>',
-        '</div>',
-        '<div class="auth-links">',
-        '  <p><a href="#/forgot">Passwort vergessen?</a></p>',
-        '  <p>Noch kein Konto? <a href="#/register">Hier registrieren</a></p>',
-        '</div>'
-      ].join('');
-
-      bindLoginForm('loginStatus');
-      const email = document.getElementById('email');
-      if (email) email.focus();
+      // Startseite zeigt einfach die Login-Box (bereits im DOM)
+      if (welcomeBox) welcomeBox.style.display = '';
+      if (appRoot) appRoot.style.display = 'none';
     },
-
     register: () => {
       if (!appRoot) return;
-      appRoot.className = 'centered-container';
+      if (welcomeBox) welcomeBox.style.display = 'none';
+      appRoot.style.display = '';
       appRoot.innerHTML = [
         '<h1>Registrieren</h1>',
         '<div id="registerStatus"></div>',
@@ -109,7 +61,7 @@
         '    </div>',
         '  </form>',
         '</div>',
-        '<p>Bereits registriert? <a href="#/">Anmelden</a></p>'
+        '<p>Bereits registriert? <a href="#/login">Anmelden</a></p>'
       ].join('');
 
       const form = document.getElementById('registerForm');
@@ -137,94 +89,65 @@
           params.append('email', email);
           params.append('password', password);
           params.append('passwordConfirm', passwordConfirm);
-
-          window.sendRequest('POST', 'register', params, function(data, status) {
-            if (status >= 200 && status < 300 && data.success) {
-              showMessage('registerStatus', 'Registrierung erfolgreich! Bitte öffnen Sie die Mock-E-Mails und aktivieren Sie Ihren Account.', false);
-              form.reset();
-              const basePath = window.location.pathname.replace(/[^/]*$/, '');
-              appRoot.insertAdjacentHTML('beforeend',
-                '<p><a href="' + basePath + 'emails" class="btn">Mock-E-Mails öffnen</a></p>');
-            } else {
-              showMessage('registerStatus', data.message || 'Fehler bei der Registrierung', true);
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', 'register', true);
+          xhr.withCredentials = true;
+          xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+          xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+          xhr.onload = function() {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+                showMessage('registerStatus', 'Registrierung erfolgreich! Bitte öffnen Sie die Mock-E-Mails und aktivieren Sie Ihren Account.', false);
+                form.reset();
+                var basePath = window.location.pathname.replace(/[^\/]*$/, '');
+                var emailsHref = basePath + 'emails';
+                appRoot.insertAdjacentHTML('beforeend', '<p><a href="' + emailsHref + '" target="_blank" rel="noopener" class="btn">Mock-E-Mails öffnen</a></p>');
+              } else {
+                showMessage('registerStatus', data.message || 'Fehler bei der Registrierung', true);
+              }
+            } catch (e) {
+              showMessage('registerStatus', 'Fehler beim Parsen der Antwort', true);
             }
-          }, { 'X-Requested-With': 'XMLHttpRequest' });
+          };
+          xhr.onerror = function() { showMessage('registerStatus', 'Netzwerkfehler', true); };
+          xhr.send(params.toString());
         });
       }
     },
-
     forgot: () => {
       if (!appRoot) return;
-      appRoot.className = 'centered-container';
+      if (welcomeBox) welcomeBox.style.display = 'none';
+      appRoot.style.display = '';
       appRoot.innerHTML = [
         '<h1>Passwort zurücksetzen</h1>',
-        '<div id="forgotStatus"></div>',
         '<div class="form-container">',
-        '  <form id="forgotForm">',
-        '    <div class="form-group">',
-        '      <label for="forgotEmail">E-Mail:</label>',
-        '      <input type="email" id="forgotEmail" name="email" required>',
-        '    </div>',
-        '    <div class="form-group">',
-        '      <input type="submit" value="Link anfordern" class="btn-primary">',
-        '    </div>',
-        '  </form>',
-        '  <p><a href="#/">Zurück zum Login</a></p>',
+        '  <p>Zum Zurücksetzen des Passworts verwenden wir die klassische Seite.</p>',
+        '  <p><a class="btn btn-primary" href="forgot-password">Link anfordern</a></p>',
+        '  <p><a href="#/login">Zurück zum Login</a></p>',
         '</div>'
       ].join('');
-
-      const form = document.getElementById('forgotForm');
-      if (form) {
-        form.addEventListener('submit', function(e) {
-          e.preventDefault();
-          const email = document.getElementById('forgotEmail').value.trim();
-          if (!email) {
-            showMessage('forgotStatus', 'Bitte geben Sie Ihre E-Mail-Adresse ein.', true);
-            return;
-          }
-
-          const params = new URLSearchParams();
-          params.append('email', email);
-
-          window.sendRequest('POST', 'forgot-password', params, function(data, status) {
-            if (status >= 200 && status < 300 && data.success) {
-              showMessage('forgotStatus', data.message, false);
-              form.reset();
-              const basePath = window.location.pathname.replace(/[^/]*$/, '');
-              appRoot.insertAdjacentHTML('beforeend',
-                '<p><a href="' + basePath + 'emails" class="btn">Mock-E-Mails öffnen</a></p>');
-            } else {
-              showMessage('forgotStatus', data.message || 'Fehler bei der Anfrage', true);
-            }
-          }, { 'X-Requested-With': 'XMLHttpRequest' });
-        });
-      }
     },
-
     booking: () => {
       if (!appRoot) return;
 
-      checkLoginStatus(function(data) {
-        if (data && data.loggedIn && data.userRole === 'ADMIN') {
-          redirectToAdmin();
-          return;
-        }
-
-        appRoot.className = 'booking-view';
+      function renderBookingView() {
+        if (welcomeBox) welcomeBox.style.display = 'none';
+        appRoot.style.display = '';
         appRoot.innerHTML = [
           '<div class="user-info" id="userInfo"><span id="userName">Nicht angemeldet</span></div>',
           '<ul class="nav-tabs">',
           '  <li class="nav-right"><a href="#/logout" id="logoutLink">Abmelden</a></li>',
           '</ul>',
           '<div id="statusMessage"></div>',
-          '<div id="loginRequired" class="hidden">',
+          '<div id="loginRequired" style="display:none;">',
           '  <p>Sie müssen angemeldet sein, um diese Seite zu nutzen.</p>',
-          '  <p><a href="#/">Zum Login</a></p>',
+          '  <p><a href="#/login">Zum Login</a></p>',
           '</div>',
-          '<div id="dashboardContainer" class="hidden">',
+          '<div id="dashboardContainer" style="display:none;">',
           '  <div class="tab">',
-          '    <button class="tablinks active" data-tab="tabBooking">Impftermin buchen</button>',
-          '    <button class="tablinks" data-tab="tabAppointments">Meine Termine</button>',
+          '    <button class="tablinks active" data-tab="tabBooking" onclick="switchTab(event, \"tabBooking\")">Impftermin buchen</button>',
+          '    <button class="tablinks" data-tab="tabAppointments" onclick="switchTab(event, \"tabAppointments\")">Meine Termine</button>',
           '  </div>',
           '  <div id="tabBooking" class="tabcontent active">',
           '    <form id="vaccineBookingForm">',
@@ -242,27 +165,59 @@
           '      <div class="form-group"><label for="timeslot">Termin:</label><select id="timeslot" name="timeslot_id" required disabled><option value="">Bitte wählen</option></select></div>',
           '      <div class="form-group"><button type="submit">Termin buchen</button></div>',
           '    </form>',
+          '    <div id="userAppointments"></div>',
           '  </div>',
           '  <div id="tabAppointments" class="tabcontent"><div id="appointmentsList"></div></div>',
           '</div>'
         ].join('');
 
-        window.__bookingUiInitialized = false;
-        if (typeof initBookingUI === 'function') {
-          initBookingUI(data);
-        }
-      });
-    },
+        loadScriptOnce('js/booking.js', function() {
+          if (typeof initBookingUI === 'function') {
+            window.__bookingUiInitialized = false;
+            initBookingUI();
+          } else if (typeof checkLoginStatus === 'function') {
+            checkLoginStatus(function(data) {
+              if (data && data.loggedIn) {
+                document.getElementById('loginRequired').style.display = 'none';
+                document.getElementById('dashboardContainer').style.display = 'block';
+                document.getElementById('userName').textContent = 'Angemeldet als: ' + (data.userName || data.email || 'Benutzer');
+                if (typeof loadVaccinationCenters === 'function') loadVaccinationCenters();
+              } else {
+                document.getElementById('loginRequired').style.display = 'block';
+                document.getElementById('dashboardContainer').style.display = 'none';
+              }
+            });
+          }
+        });
+      }
 
+      if (typeof checkLoginStatus === 'function') {
+        checkLoginStatus(function(data) {
+          if (data && data.loggedIn && data.userRole === 'ADMIN') {
+            redirectToAdmin();
+            return;
+          }
+          renderBookingView();
+        });
+        return;
+      }
+      renderBookingView();
+    },
     admin: () => {
       redirectToAdmin();
     },
-
+    login: () => {
+      // Fokussiert die Login-Box auf der Startseite
+      if (welcomeBox) {
+        welcomeBox.style.display = '';
+        const email = document.getElementById('email');
+        if (email) email.focus();
+      }
+      if (appRoot) appRoot.style.display = 'none';
+    },
     logout: () => {
       window.sendRequest('POST', 'logout', null, function() {
-        window.__bookingUiInitialized = false;
-        appRoot.className = 'centered-container';
-        window.location.hash = '#/';
+        window.location.href = './';
       });
     }
   };
@@ -273,36 +228,13 @@
     if (hash.startsWith('#/forgot')) return Views.forgot();
     if (hash.startsWith('#/booking')) return Views.booking();
     if (hash.startsWith('#/admin')) return Views.admin();
+    if (hash.startsWith('#/login')) return Views.login();
     if (hash.startsWith('#/logout')) return Views.logout();
     return Views.home();
   }
 
-  function checkIfAlreadyLoggedIn(done) {
-    const hash = window.location.hash || '';
-    if (
-      hash.startsWith('#/register') ||
-      hash.startsWith('#/forgot') ||
-      hash.startsWith('#/booking') ||
-      hash.startsWith('#/admin') ||
-      hash.startsWith('#/logout')
-    ) {
-      done();
-      return;
-    }
-
-    checkLoginStatus(function(data) {
-      if (data.loggedIn) {
-        if (data.userRole === 'ADMIN') {
-          window.location.href = 'admin';
-          return;
-        }
-        window.location.hash = '#/booking';
-        return;
-      }
-      done();
-    });
-  }
-
   window.addEventListener('hashchange', router);
-  checkIfAlreadyLoggedIn(router);
+  router();
 })();
+
+

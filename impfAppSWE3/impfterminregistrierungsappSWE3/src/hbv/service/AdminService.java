@@ -2,21 +2,25 @@ package hbv.service;
 
 import hbv.utils.DbUtils;
 import java.sql.*;
+import java.util.*;
 import org.json.*;
 
 public class AdminService {
-
-  private final VaccinationCenterService centerService = new VaccinationCenterService();
-
   public JSONArray getAllCenters() throws Exception {
     JSONArray centers = new JSONArray();
 
-    for (var center : centerService.getAllCenters()) {
-      JSONObject entry = new JSONObject();
-      entry.put("id", center.get("id"));
-      entry.put("name", center.get("name"));
-      entry.put("address", center.get("address"));
-      centers.put(entry);
+    try (Connection conn = DbUtils.getConnection()) {
+      PreparedStatement ps =
+          conn.prepareStatement("SELECT id, name, address FROM vaccination_center");
+      ResultSet rs = ps.executeQuery();
+
+      while (rs.next()) {
+        JSONObject center = new JSONObject();
+        center.put("id", rs.getInt("id"));
+        center.put("name", rs.getString("name"));
+        center.put("address", rs.getString("address"));
+        centers.put(center);
+      }
     }
 
     return centers;
@@ -47,7 +51,13 @@ public class AdminService {
   }
 
   public boolean createCenter(String name, String address) throws Exception {
-    return centerService.createCenter(name, address) > 0;
+    try (Connection conn = DbUtils.getConnection()) {
+      PreparedStatement ps =
+          conn.prepareStatement("INSERT INTO vaccination_center (name, address) VALUES (?, ?)");
+      ps.setString(1, name);
+      ps.setString(2, address);
+      return ps.executeUpdate() > 0;
+    }
   }
 
   public boolean updateInventory(int centerId, int vaccineId, int dosesToAdd) throws Exception {

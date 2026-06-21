@@ -1,68 +1,68 @@
 package hbv.utils;
 
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Base64;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 import java.util.HexFormat;
 import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
 
 public class PasswordUtils {
 
-  private static final String ALGORITHM = "PBKDF2WithHmacSHA512";
-  private static final int ITERATIONS = 210_000;
-  private static final int KEY_LENGTH = 512;
-  private static final int SALT_LENGTH = 8;
+  private static final String DEFAULT_ALGORITHM = "PBKDF2WithHmacSHA1";
+  private static final int DEFAULT_ITERATIONS = 65536;
+  private static final int DEFAULT_KEY_LENGTH = 128;
 
   public static String hashPassword(String password) throws Exception {
-    byte[] salt = generateSalt();
-    byte[] hash = hashPassword(password, salt);
-    return HexFormat.of().formatHex(salt) + ":" + HexFormat.of().formatHex(hash);
-  }
-
-  public static byte[] generateSalt() throws NoSuchAlgorithmException {
-    SecureRandom random = SecureRandom.getInstanceStrong();
-    byte[] salt = new byte[SALT_LENGTH];
+    SecureRandom random = new SecureRandom();
+    byte[] salt = new byte[16];
     random.nextBytes(salt);
-    return salt;
-  }
 
-  static byte[] hashPassword(String password, byte[] salt)
-      throws NoSuchAlgorithmException, InvalidKeySpecException {
-    PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
-    try {
-      SecretKeyFactory factory = SecretKeyFactory.getInstance(ALGORITHM);
-      SecretKey key = factory.generateSecret(spec);
-      return key.getEncoded();
-    } finally {
-      spec.clearPassword();
-    }
+    PBEKeySpec spec =
+        new PBEKeySpec(password.toCharArray(), salt, DEFAULT_ITERATIONS, DEFAULT_KEY_LENGTH);
+    SecretKeyFactory factory = SecretKeyFactory.getInstance(DEFAULT_ALGORITHM);
+    byte[] hash = factory.generateSecret(spec).getEncoded();
+
+    String saltString = Base64.getEncoder().encodeToString(salt);
+    String hashString = Base64.getEncoder().encodeToString(hash);
+
+    return saltString + ":" + hashString;
   }
 
   public static boolean verifyPassword(String password, String storedHash) {
     try {
       String[] parts = storedHash.split(":");
-      if (parts.length != 2 || !isHexSalt(parts[0]) || !isHex(parts[1])) {
+      if (parts.length < 2) {
         return false;
       }
-      byte[] salt = HexFormat.of().parseHex(parts[0]);
-      byte[] hash = HexFormat.of().parseHex(parts[1]);
-      byte[] testHash = hashPassword(password, salt);
+
+      byte[] salt = Base64.getDecoder().decode(parts[0]);
+      byte[] hash = Base64.getDecoder().decode(parts[parts.length - 1]);
+
+      String algorithm = DEFAULT_ALGORITHM;
+      int iterations = DEFAULT_ITERATIONS;
+      int keyLength = DEFAULT_KEY_LENGTH;
+
+      if (parts.length >= 3) {
+        algorithm = parts[0];
+        iterations = Integer.parseInt(parts[1]);
+        keyLength = Integer.parseInt(parts[2]);
+        salt = Base64.getDecoder().decode(parts[3]);
+        hash = Base64.getDecoder().decode(parts[4]);
+      }
+
+      PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, iterations, keyLength);
+      SecretKeyFactory skf = SecretKeyFactory.getInstance(algorithm);
+      byte[] testHash = skf.generateSecret(spec).getEncoded();
+
       return Arrays.equals(hash, testHash);
     } catch (Exception e) {
       System.err.println("Fehler bei der Passwort-Verifikation: " + e.getMessage());
       e.printStackTrace();
       return false;
     }
-  }
-
-  private static boolean isHexSalt(String value) {
-    return value.length() == SALT_LENGTH * 2 && isHex(value);
-  }
-
-  private static boolean isHex(String value) {
-    return value.matches("[0-9a-fA-F]+");
   }
 }

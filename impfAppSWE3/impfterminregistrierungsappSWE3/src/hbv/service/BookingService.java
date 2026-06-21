@@ -1,7 +1,7 @@
 package hbv.service;
 
 import hbv.messaging.EmailMessageFactory;
-import hbv.messaging.RedisEmailSender;
+import hbv.messaging.EmailService;
 import hbv.utils.DbUtils;
 import hbv.web.PDFGenerator;
 import java.sql.*;
@@ -72,13 +72,7 @@ public class BookingService {
   }
 
   public Map<String, Object> bookAppointment(
-      int userId,
-      int timeslotId,
-      int vaccineId,
-      int personId,
-      String baseUrl,
-      String webapp,
-      String sessionId)
+      int userId, int timeslotId, int vaccineId, int personId, String baseUrl, String webapp)
       throws Exception {
     Map<String, Object> result = new HashMap<>();
 
@@ -112,7 +106,7 @@ public class BookingService {
         result.put("success", true);
         result.put("message", "Termin erfolgreich gebucht");
 
-        sendConfirmationBestEffort(bookingId, confirmationData, baseUrl, webapp, sessionId);
+        sendConfirmationBestEffort(bookingId, confirmationData, baseUrl, webapp);
 
       } catch (SQLException e) {
         connection.rollback();
@@ -250,7 +244,7 @@ public class BookingService {
   }
 
   private void sendConfirmationBestEffort(
-      int bookingId, ConfirmationData data, String baseUrl, String webapp, String sessionId) {
+      int bookingId, ConfirmationData data, String baseUrl, String webapp) {
     if (bookingId <= 0 || data == null || !data.isComplete()) {
       return;
     }
@@ -266,16 +260,28 @@ public class BookingService {
               baseUrl,
               webapp);
 
-      RedisEmailSender.send(
+      EmailService.send(
           EmailMessageFactory.bookingConfirmation(
               data.email,
               data.personName,
               data.appointmentDate,
               data.vaccinationCenter,
               data.vaccineType,
-              pdfData),
-          sessionId);
+              pdfData));
     } catch (Exception ignored) {
+    }
+  }
+
+  private int getCenterIdForTimeslot(int timeslotId) throws Exception {
+    try (Connection connection = DbUtils.getConnection();
+        PreparedStatement ps =
+            connection.prepareStatement("SELECT center_id FROM timeslot WHERE id = ?")) {
+      ps.setInt(1, timeslotId);
+      ResultSet rs = ps.executeQuery();
+      if (rs.next()) {
+        return rs.getInt("center_id");
+      }
+      throw new SQLException("Timeslot nicht gefunden");
     }
   }
 
@@ -302,34 +308,6 @@ public class BookingService {
         appointment.put("vaccineName", rs.getString("vaccine_name"));
         appointment.put("centerName", rs.getString("center_name"));
         appointment.put("centerAddress", rs.getString("center_address"));
-        return appointment;
-      }
-    }
-
-    return null;
-  }
-
-  public Map<String, Object> getConfirmedAppointmentForAccount(int bookingId, int accountId)
-      throws Exception {
-    try (Connection connection = DbUtils.getConnection()) {
-      PreparedStatement ps =
-          connection.prepareStatement(
-              "SELECT b.id, p.first_name, p.last_name, t.start_time, vc.name AS center_name, v.name"
-                  + " AS vaccine_name FROM booking b JOIN person p ON b.person_id = p.id JOIN"
-                  + " timeslot t ON b.timeslot_id = t.id JOIN vaccination_center vc ON t.center_id"
-                  + " = vc.id JOIN vaccine v ON b.vaccine_id = v.id WHERE b.id = ? AND b.account_id"
-                  + " = ? AND b.status = 'CONFIRMED'");
-      ps.setInt(1, bookingId);
-      ps.setInt(2, accountId);
-      ResultSet rs = ps.executeQuery();
-
-      if (rs.next()) {
-        Map<String, Object> appointment = new HashMap<>();
-        appointment.put("id", rs.getInt("id"));
-        appointment.put("personName", rs.getString("first_name") + " " + rs.getString("last_name"));
-        appointment.put("startTime", rs.getTimestamp("start_time"));
-        appointment.put("centerName", rs.getString("center_name"));
-        appointment.put("vaccineName", rs.getString("vaccine_name"));
         return appointment;
       }
     }

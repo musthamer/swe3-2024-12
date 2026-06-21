@@ -13,7 +13,7 @@ public class AdminDashboardRedirectServlet extends HttpServlet {
     String userRole = (session != null) ? (String) session.getAttribute("userRole") : null;
 
     if (session == null || !"ADMIN".equals(userRole)) {
-      response.sendRedirect(request.getContextPath() + "/");
+      response.sendRedirect("login");
       return;
     }
 

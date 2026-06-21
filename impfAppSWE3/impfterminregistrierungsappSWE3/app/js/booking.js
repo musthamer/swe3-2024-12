@@ -1,208 +1,271 @@
 function switchTab(evt, tabName) {
-  const tabContent = document.getElementsByClassName('tabcontent');
+  let tabContent = document.getElementsByClassName("tabcontent");
   for (let i = 0; i < tabContent.length; i++) {
-    tabContent[i].classList.remove('active');
+    tabContent[i].classList.remove("active");
   }
-  const tabLinks = document.getElementsByClassName('tablinks');
+  let tabLinks = document.getElementsByClassName("tablinks");
   for (let i = 0; i < tabLinks.length; i++) {
-    tabLinks[i].classList.remove('active');
+    tabLinks[i].classList.remove("active");
   }
-  document.getElementById(tabName).classList.add('active');
+  document.getElementById(tabName).classList.add("active");
   if (evt) {
-    evt.currentTarget.classList.add('active');
+    evt.currentTarget.classList.add("active");
   } else {
     for (let i = 0; i < tabLinks.length; i++) {
-      if (tabLinks[i].getAttribute('data-tab') === tabName) {
-        tabLinks[i].classList.add('active');
+      if (tabLinks[i].getAttribute("onclick").includes(tabName)) {
+        tabLinks[i].classList.add("active");
         break;
       }
     }
   }
   if (tabName === 'tabAppointments') {
-    loadAppointments();
+    loadAppointments(); 
+  }
+}
+
+// Nur definieren, falls nicht bereits zentral vorhanden (aus main.js)
+if (typeof checkLoginStatus !== 'function') {
+  function checkLoginStatus(callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'api/check-login', true);
+    xhr.withCredentials = true;
+    xhr.onload = function() {
+      var data = { loggedIn: false };
+      try { data = JSON.parse(xhr.responseText); } catch (e) {}
+      callback(data);
+    };
+    xhr.onerror = function() { callback({ loggedIn: false }); };
+    xhr.send();
   }
 }
 
 function loadVaccinationCenters() {
-  window.sendRequest('GET', 'api/vaccination-centers', null, function(data) {
-    const centerSelect = document.getElementById('center');
-    if (!centerSelect) return;
-    centerSelect.innerHTML = '<option value="">Bitte wählen</option>';
-    if (data.success && data.centers && data.centers.length > 0) {
-      data.centers.forEach(function(center) {
-        const option = document.createElement('option');
-        option.value = center.id;
-        option.textContent = center.name + ' (' + center.address + ')';
-        centerSelect.appendChild(option);
-      });
-    } else {
-      centerSelect.innerHTML = '<option value="">Keine Zentren verfügbar</option>';
+  let xhr = new XMLHttpRequest();
+  xhr.open('GET', 'api/vaccination-centers', true);
+  xhr.withCredentials = true;
+  xhr.onload = function() {
+    try {
+      let data = JSON.parse(xhr.responseText);
+      let centerSelect = document.getElementById('center');
+      centerSelect.innerHTML = '<option value="">Bitte wählen</option>';
+      if (data.success && data.centers && data.centers.length > 0) {
+        data.centers.forEach(function(center) {
+          let option = document.createElement('option');
+          option.value = center.id;
+          option.textContent = center.name + ' (' + center.address + ')';
+          centerSelect.appendChild(option);
+        });
+      } else {
+        centerSelect.innerHTML = '<option value="">Keine Zentren verfügbar</option>';
+      }
+    } catch (e) {
+      document.getElementById('center').innerHTML = '<option value="">Fehler</option>';
     }
-  }, null, {
-    onNetworkError: function() {
-      const centerSelect = document.getElementById('center');
-      if (centerSelect) centerSelect.innerHTML = '<option value="">Netzwerkfehler</option>';
-    },
-    onParseError: function() {
-      const centerSelect = document.getElementById('center');
-      if (centerSelect) centerSelect.innerHTML = '<option value="">Fehler</option>';
-    }
-  });
+  };
+  xhr.onerror = function() {
+    document.getElementById('center').innerHTML = '<option value="">Netzwerkfehler</option>';
+  };
+  xhr.send();
 }
 
 function loadVaccinesForCenter(centerId) {
-  window.sendRequest('GET', 'api/vaccines?center_id=' + centerId, null, function(data) {
-    const vaccineSelect = document.getElementById('vaccine');
-    vaccineSelect.innerHTML = '<option value="">Bitte wählen</option>';
-    if (data.success && data.vaccines && data.vaccines.length > 0) {
-      data.vaccines.forEach(function(vaccine) {
-        if (vaccine.availableDoses > 0) {
-          const option = document.createElement('option');
-          option.value = vaccine.id;
-          option.textContent = vaccine.name + ' (verfügbar: ' + vaccine.availableDoses + ')';
-          vaccineSelect.appendChild(option);
-        }
-      });
-      vaccineSelect.disabled = false;
-    } else {
+  let xhr = new XMLHttpRequest();
+  xhr.open('GET', 'api/vaccines?center_id=' + centerId, true);
+  xhr.withCredentials = true;
+  xhr.onload = function() {
+    try {
+      let data = JSON.parse(xhr.responseText);
+      let vaccineSelect = document.getElementById('vaccine');
+      vaccineSelect.innerHTML = '<option value="">Bitte wählen</option>';
+      if (data.success && data.vaccines && data.vaccines.length > 0) {
+        data.vaccines.forEach(function(vaccine) {
+          if (vaccine.availableDoses > 0) {
+            let option = document.createElement('option');
+            option.value = vaccine.id;
+            option.textContent = vaccine.name + ' (verfügbar: ' + vaccine.availableDoses + ')';
+            vaccineSelect.appendChild(option);
+          }
+        });
+        vaccineSelect.disabled = false;
+      } else {
+        resetDropdown('vaccine');
+      }
+    } catch (e) {
       resetDropdown('vaccine');
     }
-  }, null, {
-    onNetworkError: function() { resetDropdown('vaccine'); },
-    onParseError: function() { resetDropdown('vaccine'); }
-  });
+  };
+  xhr.onerror = function() {
+    resetDropdown('vaccine');
+  };
+  xhr.send();
 }
 
 function loadTimeSlotsForCenter(centerId) {
-  window.sendRequest('GET', 'api/timeslots?center_id=' + centerId, null, function(data) {
-    const timeslotSelect = document.getElementById('timeslot');
-    timeslotSelect.innerHTML = '<option value="">Bitte wählen</option>';
-    if (data.success && data.timeslots && data.timeslots.length > 0) {
-      let available = false;
-      data.timeslots.forEach(function(slot) {
-        const capacity = slot.capacity || 0;
-        const booked = slot.bookedCount || 0;
-        const remaining = (slot.remainingCapacity !== undefined) ? slot.remainingCapacity : (capacity - booked);
-        if (remaining > 0) {
-          const option = document.createElement('option');
-          option.value = slot.id;
-          const date = new Date(slot.startTime || slot.start_time);
-          option.textContent = date.toLocaleDateString('de-DE') + ', ' +
-            date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) +
-            ' Uhr (' + remaining + ' Plätze frei)';
-          timeslotSelect.appendChild(option);
-          available = true;
+  let xhr = new XMLHttpRequest();
+  xhr.open('GET', 'api/timeslots?center_id=' + centerId, true);
+  xhr.withCredentials = true;
+  xhr.onload = function() {
+    try {
+      let data = JSON.parse(xhr.responseText);
+      let timeslotSelect = document.getElementById('timeslot');
+      timeslotSelect.innerHTML = '<option value="">Bitte wählen</option>';
+      if (data.success && data.timeslots && data.timeslots.length > 0) {
+        let available = false;
+        data.timeslots.forEach(function(slot) {
+          let capacity = slot.capacity || 0;
+          let booked = slot.bookedCount || 0;
+          let remaining = (slot.remainingCapacity !== undefined) ? slot.remainingCapacity : (capacity - booked);
+          if (remaining > 0) {
+            let option = document.createElement('option');
+            option.value = slot.id;
+            let date = new Date(slot.startTime || slot.start_time);
+            option.textContent = date.toLocaleDateString('de-DE') + ', ' +
+              date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) +
+              ' Uhr (' + remaining + ' Plätze frei)';
+            timeslotSelect.appendChild(option);
+            available = true;
+          }
+        });
+        if (!available) {
+          timeslotSelect.innerHTML = '<option value="">Keine freien Termine</option>';
+          timeslotSelect.disabled = true;
+        } else {
+          timeslotSelect.disabled = false;
         }
-      });
-      if (!available) {
-        timeslotSelect.innerHTML = '<option value="">Keine freien Termine</option>';
-        timeslotSelect.disabled = true;
       } else {
-        timeslotSelect.disabled = false;
+        resetDropdown('timeslot');
       }
-    } else {
+    } catch (e) {
       resetDropdown('timeslot');
     }
-  }, null, {
-    onNetworkError: function() { resetDropdown('timeslot'); },
-    onParseError: function() { resetDropdown('timeslot'); }
-  });
+  };
+  xhr.onerror = function() {
+    resetDropdown('timeslot');
+  };
+  xhr.send();
 }
 
 function bookAppointment() {
-  const form = document.getElementById('vaccineBookingForm');
-  const formData = new FormData(form);
-  window.sendRequest('POST', 'api/book-appointment', formData, function(data) {
-    if (data.success) {
-      showMessage('statusMessage', 'Termin gebucht.', false);
-      form.reset();
-      resetBookingForSelf();
-      resetDropdown('vaccine');
-      resetDropdown('timeslot');
-      switchTab(null, 'tabAppointments');
-    } else {
-      showMessage('statusMessage', data.message || 'Fehler', true);
+  let form = document.getElementById('vaccineBookingForm');
+  let formData = new FormData(form);
+  let xhr = new XMLHttpRequest();
+  xhr.open('POST', 'api/book-appointment', true);
+  xhr.withCredentials = true;
+  xhr.onload = function() {
+    try {
+      let data = JSON.parse(xhr.responseText);
+      if (data.success) {
+        showMessage('statusMessage', 'Termin gebucht.', false);
+        form.reset();
+        resetBookingForSelf();
+        resetDropdown('vaccine');
+        resetDropdown('timeslot');
+        switchTab(null, 'tabAppointments');
+      } else {
+        showMessage('statusMessage', data.message || 'Fehler', true);
+      }
+    } catch (e) {
+      showMessage('statusMessage', 'Verarbeitungsfehler', true);
     }
-  }, null, {
-    onNetworkError: function() { showMessage('statusMessage', 'Netzwerkfehler', true); },
-    onParseError: function() { showMessage('statusMessage', 'Verarbeitungsfehler', true); }
-  });
+  };
+  xhr.onerror = function() {
+    showMessage('statusMessage', 'Netzwerkfehler', true);
+  };
+  xhr.send(formData);
 }
 
 function downloadConfirmationPDF(appointmentId) {
-  window.sendRequest('GET', 'booking-pdf?id=' + appointmentId, null, function(blob, status) {
-    if (status === 200) {
-      const link = document.createElement('a');
+  let xhr = new XMLHttpRequest();
+  xhr.open('GET', 'booking-pdf?id=' + appointmentId, true);
+  xhr.withCredentials = true;
+  xhr.responseType = 'blob'; // Wir erwarten einen PDF-Blob
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      let blob = new Blob([xhr.response], { type: 'application/pdf' });
+      let link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
-      link.download = 'Bestaetigung_' + appointmentId + '.pdf';
+      link.download = "Bestaetigung_" + appointmentId + ".pdf";
       link.click();
     } else {
       showMessage('statusMessage', 'Fehler beim Herunterladen der Bestätigung.', true);
     }
-  }, null, {
-    responseType: 'blob',
-    onNetworkError: function() {
-      showMessage('statusMessage', 'Netzwerkfehler beim Herunterladen der Bestätigung.', true);
-    }
-  });
+  };
+  xhr.onerror = function() {
+    showMessage('statusMessage', 'Netzwerkfehler beim Herunterladen der Bestätigung.', true);
+  };
+  xhr.send();
 }
 
 function loadAppointments() {
-  window.sendRequest('GET', 'api/appointments', null, function(data) {
-    if (data.success && data.appointments) {
-      displayAppointments(data.appointments);
-    } else {
-      document.getElementById('appointmentsList').innerHTML = '<p>Keine Termine gefunden.</p>';
+  let xhr = new XMLHttpRequest();
+  xhr.open('GET', 'api/appointments', true);
+  xhr.withCredentials = true;
+  xhr.onload = function() {
+    try {
+      let data = JSON.parse(xhr.responseText);
+      if (data.success && data.appointments) {
+        displayAppointments(data.appointments);
+      } else {
+        document.getElementById('appointmentsList').innerHTML = '<p>Keine Termine gefunden.</p>';
+      }
+    } catch (e) {
+      document.getElementById('appointmentsList').innerHTML = '<p>Fehler beim Laden der Termine: ' + e + '</p>';
     }
-  }, null, {
-    onNetworkError: function() {
-      document.getElementById('appointmentsList').innerHTML = '<p>Netzwerkfehler beim Laden der Termine.</p>';
-    },
-    onParseError: function() {
-      document.getElementById('appointmentsList').innerHTML = '<p>Fehler beim Laden der Termine.</p>';
-    }
-  });
+  };
+  xhr.onerror = function() {
+    document.getElementById('appointmentsList').innerHTML = '<p>Netzwerkfehler beim Laden der Termine.</p>';
+  };
+  xhr.send();
 }
 
 function cancelAppointment(id) {
   if (!confirm('Möchten Sie diesen Termin wirklich stornieren?')) return;
-  const formData = new FormData();
+  let formData = new FormData();
   formData.append('action', 'cancel');
   formData.append('id', id);
-  window.sendRequest('POST', 'api/appointments', formData, function(data) {
-    if (data.success) {
-      displayAppointments(data.appointments);
-      showMessage('statusMessage', 'Termin storniert.', false);
-    } else {
-      showMessage('statusMessage', data.message || 'Fehler beim Stornieren', true);
+  let xhr = new XMLHttpRequest();
+  xhr.open('POST', 'api/appointments', true);
+  xhr.withCredentials = true;
+  xhr.onload = function() {
+    try {
+      let data = JSON.parse(xhr.responseText);
+      if (data.success) {
+        displayAppointments(data.appointments);
+        showMessage('statusMessage', 'Termin storniert.', false);
+      } else {
+        showMessage('statusMessage', data.message || 'Fehler beim Stornieren', true);
+      }
+    } catch (e) {
+      showMessage('statusMessage', 'Verarbeitungsfehler', true);
     }
-  }, null, {
-    onNetworkError: function() { showMessage('statusMessage', 'Netzwerkfehler', true); },
-    onParseError: function() { showMessage('statusMessage', 'Verarbeitungsfehler', true); }
-  });
+  };
+  xhr.onerror = function() {
+    showMessage('statusMessage', 'Netzwerkfehler', true);
+  };
+  xhr.send(formData);
 }
 
 function displayAppointments(appointments) {
-  const container = document.getElementById('appointmentsList');
+  let container = document.getElementById('appointmentsList');
   if (!appointments || appointments.length === 0) {
     container.innerHTML = '<p>Keine gebuchten Termine.</p>';
     return;
   }
   let html = '<table class="appointments-table"><thead><tr><th>Patient</th><th>Datum</th><th>Uhrzeit</th><th>Zentrum</th><th>Impfstoff</th><th>Status</th><th>Aktion</th></tr></thead><tbody>';
   appointments.forEach(function(appointment) {
-    const date = appointment.startTime ? appointment.startTime.split(' ')[0] : 'Unbekannt';
-    const time = appointment.startTime ? appointment.startTime.split(' ')[1].substring(0, 5) : 'Unbekannt';
-    const status = appointment.status || 'UNBEKANNT';
-    const patientName = ((appointment.firstName || '') + ' ' + (appointment.lastName || '')).trim() || 'Unbekannt';
-    const isActive = (status === 'BOOKED' || status === 'CONFIRMED');
-    let actions = '';
+    let date = appointment.startTime ? appointment.startTime.split(' ')[0] : 'Unbekannt';
+    let time = appointment.startTime ? appointment.startTime.split(' ')[1].substring(0, 5) : 'Unbekannt';
+    let status = appointment.status || 'UNBEKANNT';
+    let patientName = ((appointment.firstName || '') + ' ' + (appointment.lastName || '')).trim() || 'Unbekannt';
+    let isActive = (status === 'BOOKED' || status === 'CONFIRMED');
+    let actions = "";
     if (isActive) {
       actions += '<button class="cancel-button" onclick="cancelAppointment(' + appointment.id + ')">Stornieren</button>';
     }
     if (appointment.status === 'CONFIRMED') {
       actions += ' <button class="download-button" onclick="downloadConfirmationPDF(' + appointment.id + ')">PDF herunterladen</button>';
     }
-    if (actions === '') {
+    if (actions === "") {
       actions = '-';
     }
     html += '<tr>' +
@@ -229,8 +292,16 @@ function translateStatus(status) {
   }
 }
 
+if (typeof showMessage !== 'function') {
+  function showMessage(elementId, message, isError) {
+    var el = document.getElementById(elementId);
+    el.innerHTML = '<div class="' + (isError ? 'error' : 'success') + '-message">' + message + '</div>';
+    setTimeout(function() { el.innerHTML = ''; }, 3000);
+  }
+}
+
 function resetDropdown(id) {
-  const sel = document.getElementById(id);
+  let sel = document.getElementById(id);
   sel.innerHTML = '<option value="">Bitte wählen</option>';
   sel.disabled = true;
 }
@@ -308,47 +379,51 @@ function setupBookingForToggle() {
   otherRadio.addEventListener('change', onChange);
 }
 
-function applyLoginState(data) {
-  const loginRequired = document.getElementById('loginRequired');
-  const dashboardContainer = document.getElementById('dashboardContainer');
-  const userNameEl = document.getElementById('userName');
-
-  if (data && data.loggedIn) {
-    if (loginRequired) loginRequired.classList.add('hidden');
-    if (dashboardContainer) dashboardContainer.classList.remove('hidden');
-    if (userNameEl) userNameEl.textContent = 'Angemeldet als: ' + (data.userName || data.email || 'Benutzer');
-    applyUserProfile(data);
-    loadVaccinationCenters();
-  } else {
-    if (loginRequired) loginRequired.classList.remove('hidden');
-    if (dashboardContainer) dashboardContainer.classList.add('hidden');
-  }
-}
-
-function initBookingUI(loginData) {
+function initBookingUI() {
+  // In der SPA kann booking.js mehrfach geladen/initialisiert werden.
   if (window.__bookingUiInitialized) return;
   window.__bookingUiInitialized = true;
 
-  document.querySelectorAll('.tablinks[data-tab]').forEach(function(btn) {
+  // Tab-Buttons robust binden (Inline-onclick bleibt als Fallback)
+  const tabButtons = document.querySelectorAll('.tablinks[data-tab]');
+  tabButtons.forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       const tabId = btn.getAttribute('data-tab');
       if (tabId) switchTab(e, tabId);
     });
   });
 
-  applyLoginState(loginData);
-
-  setupBookingForToggle();
-
+  const loginRequired = document.getElementById('loginRequired');
+  const dashboardContainer = document.getElementById('dashboardContainer');
+  const userNameEl = document.getElementById('userName');
   const logoutLink = document.getElementById('logoutLink');
-  if (logoutLink) {
-    logoutLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      window.location.hash = '#/logout';
+  const bookingForm = document.getElementById('vaccineBookingForm');
+  const centerSelect = document.getElementById('center');
+
+  if (typeof checkLoginStatus === 'function') {
+    checkLoginStatus(function(data) {
+      if (data && data.loggedIn) {
+        if (loginRequired) loginRequired.style.display = 'none';
+        if (dashboardContainer) dashboardContainer.style.display = 'block';
+        if (userNameEl) userNameEl.textContent = 'Angemeldet als: ' + (data.userName || data.email || 'Benutzer');
+        applyUserProfile(data);
+        if (typeof loadVaccinationCenters === 'function') loadVaccinationCenters();
+      } else {
+        if (loginRequired) loginRequired.style.display = 'block';
+        if (dashboardContainer) dashboardContainer.style.display = 'none';
+      }
     });
   }
 
-  const bookingForm = document.getElementById('vaccineBookingForm');
+  setupBookingForToggle();
+
+  if (logoutLink) {
+    logoutLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      window.location.href = 'logout';
+    });
+  }
+
   if (bookingForm) {
     bookingForm.addEventListener('submit', function(e) {
       e.preventDefault();
@@ -356,10 +431,9 @@ function initBookingUI(loginData) {
     });
   }
 
-  const centerSelect = document.getElementById('center');
   if (centerSelect) {
     centerSelect.addEventListener('change', function() {
-      const centerId = this.value;
+      let centerId = this.value;
       if (centerId) {
         loadVaccinesForCenter(centerId);
         loadTimeSlotsForCenter(centerId);
@@ -370,3 +444,7 @@ function initBookingUI(loginData) {
     });
   }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  initBookingUI();
+});

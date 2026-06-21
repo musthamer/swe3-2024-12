@@ -1,6 +1,5 @@
 package hbv.web;
 
-import hbv.messaging.RedisEmailSender;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.*;
@@ -36,8 +35,7 @@ public class EmailViewerServlet extends HttpServlet {
     try {
       Jedis jedis = JedisAdapter.getJedis();
       if (jedis != null) {
-        String sessionId = request.getSession().getId();
-        List<String> emails = jedis.lrange(RedisEmailSender.emailsKey(sessionId), 0, -1);
+        List<String> emails = jedis.lrange("emails", 0, -1);
 
         if (emails.isEmpty()) {
           out.println("<p>Keine E-Mails gefunden.</p>");
@@ -85,7 +83,7 @@ public class EmailViewerServlet extends HttpServlet {
       e.printStackTrace(out);
     }
 
-    out.println("<p><a href='./'>Zurück zur Startseite</a></p>");
+    out.println("<p><a href='index.html'>Zurück zur Startseite</a></p>");
     out.println("</body></html>");
   }
 
@@ -98,8 +96,7 @@ public class EmailViewerServlet extends HttpServlet {
 
       Jedis jedis = JedisAdapter.getJedis();
       if (jedis != null) {
-        String sessionId = request.getSession().getId();
-        List<String> emails = jedis.lrange(RedisEmailSender.emailsKey(sessionId), 0, -1);
+        List<String> emails = jedis.lrange("emails", 0, -1);
 
         if (pdfId >= 0 && pdfId < emails.size()) {
           String emailJson = emails.get(pdfId);

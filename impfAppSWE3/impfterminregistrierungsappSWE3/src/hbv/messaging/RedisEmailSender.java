@@ -5,24 +5,10 @@ import java.util.Base64;
 import org.json.JSONObject;
 import redis.clients.jedis.Jedis;
 
-public final class RedisEmailSender {
+public class RedisEmailSender implements EmailSender {
 
-  private static final int SESSION_EMAIL_TTL_SECONDS = 3600;
-
-  private RedisEmailSender() {}
-
-  public static String emailsKey(String sessionId) {
-    return "emails:" + sessionId;
-  }
-
-  public static void send(EmailMessage message, String sessionId) {
-    if (sessionId == null || sessionId.isBlank()) {
-      throw new IllegalArgumentException("Session-ID fehlt beim Speichern der E-Mail.");
-    }
-
-    System.out.println(
-        "[Email] Sende an: " + message.getTo() + ", Betreff: " + message.getSubject());
-
+  @Override
+  public void send(EmailMessage message) {
     Jedis jedis = null;
     try {
       jedis = JedisAdapter.getJedis();
@@ -39,25 +25,7 @@ public final class RedisEmailSender {
         emailJson.put("attachment", attachment);
       }
 
-      String key = emailsKey(sessionId);
-      jedis.rpush(key, emailJson.toString());
-      jedis.expire(key, SESSION_EMAIL_TTL_SECONDS);
-    } finally {
-      if (jedis != null) {
-        JedisAdapter.releaseJedis(jedis);
-      }
-    }
-  }
-
-  public static void clearSession(String sessionId) {
-    if (sessionId == null || sessionId.isBlank()) {
-      return;
-    }
-
-    Jedis jedis = null;
-    try {
-      jedis = JedisAdapter.getJedis();
-      jedis.del(emailsKey(sessionId));
+      jedis.rpush("emails", emailJson.toString());
     } finally {
       if (jedis != null) {
         JedisAdapter.releaseJedis(jedis);

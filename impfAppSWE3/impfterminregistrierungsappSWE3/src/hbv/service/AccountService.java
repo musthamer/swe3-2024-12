@@ -5,7 +5,6 @@ import hbv.utils.PasswordUtils;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,16 +30,11 @@ public class AccountService {
         String lastName = rs.getString("last_name");
 
         if (PasswordUtils.verifyPassword(password, storedHash)) {
-          if (hasPendingActivation(conn, userId)) {
-            result.put("success", false);
-            result.put("message", "Bitte aktivieren Sie zuerst Ihren Account per E-Mail.");
-          } else {
-            result.put("success", true);
-            result.put("message", "Login erfolgreich");
-            result.put("userId", userId);
-            result.put("userRole", isAdmin ? "ADMIN" : "USER");
-            result.put("userName", firstName + " " + lastName);
-          }
+          result.put("success", true);
+          result.put("message", "Login erfolgreich");
+          result.put("userId", userId);
+          result.put("userRole", isAdmin ? "ADMIN" : "USER");
+          result.put("userName", firstName + " " + lastName);
         } else {
           result.put("success", false);
           result.put("message", "Falsches Passwort");
@@ -52,14 +46,5 @@ public class AccountService {
     }
 
     return result;
-  }
-
-  private boolean hasPendingActivation(Connection conn, int accountId) throws SQLException {
-    PreparedStatement ps =
-        conn.prepareStatement("SELECT COUNT(*) FROM account_activation WHERE account_id = ?");
-    ps.setInt(1, accountId);
-    ResultSet rs = ps.executeQuery();
-    rs.next();
-    return rs.getInt(1) > 0;
   }
 }

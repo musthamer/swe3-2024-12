@@ -73,30 +73,211 @@ public class VaccinationCenterService {
     return centerId;
   }
 
-  public Map<String, Object> getVaccineInventory(int centerId) throws Exception {
-    Map<String, Object> inventory = new HashMap<>();
+  public List<Map<String, Object>> getAllCentersStatistics() throws Exception {
+    List<Map<String, Object>> allStats = new ArrayList<>();
 
     try (Connection connection = DbUtils.getConnection()) {
+      // Basisinformationen zu Impfzentren abrufen
       PreparedStatement ps =
           connection.prepareStatement(
-              "SELECT v.id, v.name, v.manufacturer, cv.available_doses "
-                  + "FROM vaccine v "
-                  + "JOIN vaccination_center_vaccine cv ON v.id = cv.vaccine_id "
-                  + "WHERE cv.center_id = ?");
+              "SELECT id, name, address FROM vaccination_center ORDER BY name");
+      ResultSet rs = ps.executeQuery();
+
+      while (rs.next()) {
+        Map<String, Object> centerStats = new HashMap<>();
+        int centerId = rs.getInt("id");
+
+        centerStats.put("id", centerId);
+        centerStats.put("centerName", rs.getString("name"));
+        centerStats.put("address", rs.getString("address"));
+
+        // Zählung der Buchungen pro Impfzentrum
+        PreparedStatement bookingStats =
+            connection.prepareStatement(
+                "SELECT COUNT(*) AS total_bookings FROM booking b "
+                    + "JOIN timeslot t ON b.timeslot_id = t.id "
+                    + "WHERE t.center_id = ? AND b.status = 'CONFIRMED'");
+        bookingStats.setInt(1, centerId);
+        ResultSet bookingRs = bookingStats.executeQuery();
+
+        int totalBookings = 0;
+        if (bookingRs.next()) {
+          totalBookings = bookingRs.getInt("total_bookings");
+        }
+        centerStats.put("totalBookings", totalBookings);
+
+        // Verfügbare Slots berechnen
+        PreparedStatement availableSlotsPs =
+            connection.prepareStatement(
+                "SELECT COUNT(*) AS available_slots FROM timeslot t WHERE t.center_id = ? AND"
+                    + " t.capacity > (SELECT COUNT(*) FROM booking b WHERE b.timeslot_id = t.id AND"
+                    + " b.status = 'CONFIRMED') AND t.start_time > NOW()");
+        availableSlotsPs.setInt(1, centerId);
+        ResultSet availableSlotsRs = availableSlotsPs.executeQuery();
+
+        int availableSlots = 0;
+        if (availableSlotsRs.next()) {
+          availableSlots = availableSlotsRs.getInt("available_slots");
+        }
+        centerStats.put("availableSlots", availableSlots);
+
+        // Belegungsrate berechnen (sofern verfügbare Zeitfenster existieren)
+        PreparedStatement totalSlotsPs =
+            connection.prepareStatement(
+                "SELECT SUM(capacity) AS total_capacity FROM timeslot WHERE center_id = ? AND"
+                    + " start_time > NOW()");
+        totalSlotsPs.setInt(1, centerId);
+        ResultSet totalSlotsRs = totalSlotsPs.executeQuery();
+
+        int totalCapacity = 0;
+        if (totalSlotsRs.next()) {
+          totalCapacity = totalSlotsRs.getInt("total_capacity");
+        }
+
+        int occupancyRate = 0;
+        if (totalCapacity > 0) {
+          occupancyRate = (int) (((double) totalBookings / totalCapacity) * 100);
+        }
+        centerStats.put("occupancyRate", occupancyRate);
+
+        // Verfügbare Impfstoffdosen abrufen
+        PreparedStatement vaccineStats =
+            connection.prepareStatement(
+                "SELECT v.name, vcv.available_doses "
+                    + "FROM vaccination_center_vaccine vcv "
+                    + "JOIN vaccine v ON vcv.vaccine_id = v.id "
+                    + "WHERE vcv.center_id = ?");
+        vaccineStats.setInt(1, centerId);
+        ResultSet vaccineRs = vaccineStats.executeQuery();
+
+        Map<String, Integer> vaccines = new HashMap<>();
+        while (vaccineRs.next()) {
+          vaccines.put(vaccineRs.getString("name"), vaccineRs.getInt("available_doses"));
+        }
+        centerStats.put("vaccines", vaccines);
+
+        allStats.add(centerStats);
+      }
+    }
+
+    return allStats;
+  }
+
+  public Map<String, Object> getCenterStatistics(int centerId) throws Exception {
+    Map<String, Object> centerStats = new HashMap<>();
+
+    try (Connection connection = DbUtils.getConnection()) {
+      // Basisinformationen zum Impfzentrum abrufen
+      PreparedStatement ps =
+          connection.prepareStatement(
+              "SELECT id, name, address FROM vaccination_center WHERE id = ?");
       ps.setInt(1, centerId);
       ResultSet rs = ps.executeQuery();
 
-      List<Map<String, Object>> vaccines = new ArrayList<>();
-      while (rs.next()) {
-        Map<String, Object> vaccine = new HashMap<>();
-        vaccine.put("id", rs.getInt("id"));
-        vaccine.put("name", rs.getString("name"));
-        vaccine.put("manufacturer", rs.getString("manufacturer"));
-        vaccine.put("availableDoses", rs.getInt("available_doses"));
-        vaccines.add(vaccine);
+      if (rs.next()) {
+        centerStats.put("id", rs.getInt("id"));
+        centerStats.put("centerName", rs.getString("name"));
+        centerStats.put("address", rs.getString("address"));
+
+        // Zählung der Buchungen
+        PreparedStatement bookingStats =
+            connection.prepareStatement(
+                "SELECT COUNT(*) AS total_bookings FROM booking b "
+                    + "JOIN timeslot t ON b.timeslot_id = t.id "
+                    + "WHERE t.center_id = ? AND b.status = 'CONFIRMED'");
+        bookingStats.setInt(1, centerId);
+        ResultSet bookingRs = bookingStats.executeQuery();
+
+        int totalBookings = 0;
+        if (bookingRs.next()) {
+          totalBookings = bookingRs.getInt("total_bookings");
+        }
+        centerStats.put("totalBookings", totalBookings);
+
+        // Verfügbare Slots berechnen
+        PreparedStatement availableSlotsPs =
+            connection.prepareStatement(
+                "SELECT COUNT(*) AS available_slots FROM timeslot t WHERE t.center_id = ? AND"
+                    + " t.capacity > (SELECT COUNT(*) FROM booking b WHERE b.timeslot_id = t.id AND"
+                    + " b.status = 'CONFIRMED') AND t.start_time > NOW()");
+        availableSlotsPs.setInt(1, centerId);
+        ResultSet availableSlotsRs = availableSlotsPs.executeQuery();
+
+        int availableSlots = 0;
+        if (availableSlotsRs.next()) {
+          availableSlots = availableSlotsRs.getInt("available_slots");
+        }
+        centerStats.put("availableSlots", availableSlots);
+
+        // Belegungsrate berechnen
+        PreparedStatement totalSlotsPs =
+            connection.prepareStatement(
+                "SELECT SUM(capacity) AS total_capacity FROM timeslot WHERE center_id = ? AND"
+                    + " start_time > NOW()");
+        totalSlotsPs.setInt(1, centerId);
+        ResultSet totalSlotsRs = totalSlotsPs.executeQuery();
+
+        int totalCapacity = 0;
+        if (totalSlotsRs.next()) {
+          totalCapacity = totalSlotsRs.getInt("total_capacity");
+        }
+
+        int occupancyRate = 0;
+        if (totalCapacity > 0) {
+          occupancyRate = (int) (((double) totalBookings / totalCapacity) * 100);
+        }
+        centerStats.put("occupancyRate", occupancyRate);
+
+        // Aktuelle Buchungen abrufen
+        PreparedStatement currentBookingsPs =
+            connection.prepareStatement(
+                "SELECT b.id, p.first_name, p.last_name, t.start_time, v.name AS vaccine_name "
+                    + "FROM booking b "
+                    + "JOIN person p ON b.person_id = p.id "
+                    + "JOIN timeslot t ON b.timeslot_id = t.id "
+                    + "JOIN vaccine v ON b.vaccine_id = v.id "
+                    + "WHERE t.center_id = ? AND b.status = 'CONFIRMED' AND t.start_time > NOW() "
+                    + "ORDER BY t.start_time LIMIT 10");
+        currentBookingsPs.setInt(1, centerId);
+        ResultSet currentBookingsRs = currentBookingsPs.executeQuery();
+
+        List<Map<String, Object>> currentBookings = new ArrayList<>();
+        while (currentBookingsRs.next()) {
+          Map<String, Object> booking = new HashMap<>();
+          booking.put("id", currentBookingsRs.getInt("id"));
+          booking.put(
+              "patientName",
+              currentBookingsRs.getString("first_name")
+                  + " "
+                  + currentBookingsRs.getString("last_name"));
+          booking.put("appointmentTime", currentBookingsRs.getTimestamp("start_time").toString());
+          booking.put("vaccineName", currentBookingsRs.getString("vaccine_name"));
+          currentBookings.add(booking);
+        }
+        centerStats.put("currentBookings", currentBookings);
+
+        // Impfstoffbestand abrufen
+        PreparedStatement vaccineStats =
+            connection.prepareStatement(
+                "SELECT v.id, v.name, vcv.available_doses "
+                    + "FROM vaccination_center_vaccine vcv "
+                    + "JOIN vaccine v ON vcv.vaccine_id = v.id "
+                    + "WHERE vcv.center_id = ?");
+        vaccineStats.setInt(1, centerId);
+        ResultSet vaccineRs = vaccineStats.executeQuery();
+
+        List<Map<String, Object>> vaccines = new ArrayList<>();
+        while (vaccineRs.next()) {
+          Map<String, Object> vaccine = new HashMap<>();
+          vaccine.put("id", vaccineRs.getInt("id"));
+          vaccine.put("name", vaccineRs.getString("name"));
+          vaccine.put("availableDoses", vaccineRs.getInt("available_doses"));
+          vaccines.add(vaccine);
+        }
+        centerStats.put("vaccines", vaccines);
       }
-      inventory.put("vaccines", vaccines);
     }
-    return inventory;
+
+    return centerStats;
   }
 }

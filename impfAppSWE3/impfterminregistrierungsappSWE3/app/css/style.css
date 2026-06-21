@@ -7,42 +7,9 @@ body {
 }
 
 .container {
-  width: 95%;
-  max-width: 1200px;
+  width: 80%;
   margin: 0 auto;
   padding: 20px;
-}
-
-.centered-container,
-.booking-view {
-  margin: 0 auto;
-  padding: 20px;
-  background-color: #fff;
-  border-radius: 5px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.centered-container {
-  max-width: 500px;
-}
-
-.booking-view {
-  max-width: 960px;
-  width: 100%;
-}
-
-.logo {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.auth-links {
-  text-align: center;
-  margin-top: 20px;
-}
-
-.hidden {
-  display: none;
 }
 
 h1 {
@@ -71,6 +38,7 @@ a:hover {
   margin-top: 20px;
 }
 
+/* Einfache Formular-Box */
 .form-container {
   background-color: #fff;
   padding: 20px;
@@ -168,6 +136,7 @@ tr:nth-child(even) {
   color: #555;
 }
 
+/* Tab-System (wird in der SPA genutzt) */
 .tab {
   overflow: hidden;
   border: 1px solid #ccc;

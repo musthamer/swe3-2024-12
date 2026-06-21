@@ -30,7 +30,7 @@ public class AdminAuthFilter implements Filter {
     if (isLoggedIn && isAdmin) {
       chain.doFilter(request, response);
     } else {
-      httpResponse.sendRedirect(httpRequest.getContextPath() + "/");
+      httpResponse.sendRedirect(httpRequest.getContextPath() + "/login.html");
     }
   }
 

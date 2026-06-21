@@ -96,7 +96,7 @@ public class AdminServlet extends HttpServlet {
   private void getVaccines(HttpServletRequest request, PrintWriter out) throws Exception {
     String centerIdStr = request.getParameter("center_id");
     if (centerIdStr == null || centerIdStr.isEmpty()) {
-      out.println("{\"success\": false, \"message\": \"Impfzentrum-ID ist erforderlich\"}");
+      out.println("{\"success\": false, \"message\": \"center_id is required\"}");
       return;
     }
 
