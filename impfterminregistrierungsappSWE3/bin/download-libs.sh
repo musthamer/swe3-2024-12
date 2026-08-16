@@ -28,6 +28,7 @@ doget jedis 5.2.0 redis/clients compile+runtime
 doget commons-pool2 2.12.0 org/apache/commons compile+runtime
 doget slf4j-api 2.0.16 org/slf4j runtime
 doget HikariCP 6.2.1 com/zaxxer runtime
+doget mariadb-java-client 3.5.1 org/mariadb/jdbc compile+runtime
 
 # ZXing-Bibliotheken für QR-Code-Generierung
 doget core 3.5.2 com/google/zxing compile+runtime
